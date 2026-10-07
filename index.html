@@ -85,7 +85,6 @@ button:disabled{opacity:.55;cursor:default}
 .p-ok{background:var(--ok-bg);color:var(--ok)}
 .p-warn{background:var(--warn-bg);color:var(--warn)}
 .p-bad{background:var(--bad-bg);color:var(--bad)}
-.p-demo{background:var(--accent-soft);color:var(--accent)}
 
 .figs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
 .fig{background:var(--surface);padding:13px 17px}
@@ -271,7 +270,7 @@ async function loadAccount(key, days){
 }
 
 /* ---- rendering ---- */
-function cardHTML(a, isDemo){
+function cardHTML(a){
   const flags = [];
   if (a.disabledReason)
     flags.push(['bad', 'Account restricted by Stripe — ' + esc(label(a.disabledReason))]);
@@ -283,22 +282,21 @@ function cardHTML(a, isDemo){
     flags.push(['', 'Stripe needs: ' + a.currentlyDue.map(x => esc(label(x))).join(", ")]);
   if (a.schedule === "manual")
     flags.push(['', 'Payouts are manual — nothing reaches the bank until you send it.']);
-  if (!a.restricted && a.mode === "LIVE" && !isDemo)
+  if (!a.restricted && a.mode === "LIVE")
     flags.push(['', 'That is a full secret key. A restricted read-only key is safer here.']);
 
   const attn = a.counts.failed + a.counts.disputed;
   const netLine = a.byCurrency.length ? a.byCurrency.map(c => money(c.net, c.currency)).join(" · ") : "—";
 
   return `
-  <article class="acct${isDemo ? " demo" : ""}">
+  <article class="acct">
     <div class="acct-head">
       <div style="min-width:0">
         <div class="acct-name">${esc(a.name)}</div>
         <div class="acct-sub">${esc(a.id)} · ${esc(a.country)} · ${esc(a.currency)}</div>
       </div>
       <span class="spacer"></span>
-      ${isDemo ? '<span class="pill p-demo">Example</span>'
-               : `<span class="pill ${a.mode === "LIVE" ? "p-live" : "p-test"}">${esc(a.mode)}</span>`}
+      <span class="pill ${a.mode === "LIVE" ? "p-live" : "p-test"}">${esc(a.mode)}</span>
     </div>
 
     <div class="figs">
@@ -387,39 +385,18 @@ function cardHTML(a, isDemo){
   </article>`;
 }
 
-/* An example card so the page shows what it does before any key is added. */
-const DEMO = {
-  mode:"LIVE", restricted:true, days:30, id:"acct_example", name:"Example Ltd",
-  country:"GB", currency:"GBP", chargesEnabled:true, payoutsEnabled:true,
-  schedule:"manual", delayDays:7, currentlyDue:[], disabledReason:null,
-  available:[{amount:0,currency:"gbp"}], pending:[{amount:142199,currency:"gbp"}],
-  counts:{returned:46,hasMore:false,succeeded:41,pending:1,failed:4,refunded:2,disputed:1},
-  byCurrency:[{currency:"GBP",gross:521940,refunded:11998,net:509942,count:41}],
-  recent:[{created:Math.floor(Date.now()/1000)-3600,state:"succeeded",amount:4999,currency:"gbp",who:"customer@example.com",note:""},
-          {created:Math.floor(Date.now()/1000)-90000,state:"failed",amount:8999,currency:"gbp",who:"another@example.com",note:""}],
-  payouts:[],
-  observedDays:7,
-  clearing:[{on:Math.floor(Date.now()/1000)+86400*2,currency:"gbp",net:48250,count:3},
-            {on:Math.floor(Date.now()/1000)+86400*5,currency:"gbp",net:93949,count:7}]
-};
-
 const accounts = [];   // {key, data} — held in memory only, never stored
-let showDemo = true;
 
 function render(){
   const grid = $("#grid");
-  if (!accounts.length && showDemo){
-    grid.innerHTML = cardHTML(DEMO, true);
-    return;
-  }
   if (!accounts.length){
-    grid.innerHTML = `<div class="empty">No accounts yet. Paste a Stripe key above and press Add account.</div>`;
+    grid.innerHTML = `<div class="empty">Paste a Stripe secret key above and press Add account.</div>`;
     return;
   }
   grid.innerHTML = accounts.map(a => a.error
     ? `<article class="acct"><div class="acct-head"><div class="acct-name">Could not read account</div></div>
        <div class="err">${esc(a.error)}</div></article>`
-    : cardHTML(a.data, false)).join("");
+    : cardHTML(a.data)).join("");
 }
 
 $("#form").addEventListener("submit", async ev => {
@@ -432,11 +409,9 @@ $("#form").addEventListener("submit", async ev => {
   try {
     const data = await loadAccount(key, days);
     accounts.push({data});
-    showDemo = false;
     $("#key").value = "";
   } catch(e){
     accounts.push({error: e.message || String(e)});
-    showDemo = false;
   } finally {
     btn.disabled = false; btn.textContent = "Add account";
     render();
@@ -446,7 +421,6 @@ $("#form").addEventListener("submit", async ev => {
 
 $("#reset").addEventListener("click", () => {
   accounts.length = 0;
-  showDemo = true;
   $("#key").value = "";
   render();
   $("#key").focus();
