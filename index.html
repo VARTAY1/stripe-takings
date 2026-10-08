@@ -3,149 +3,212 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Stripe Takings</title>
+<title>Stripe Operations</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
 <style>
-/* Layout: a key bar, then one self-contained card per account, stacked and
-   wrapping to a grid on wide screens. Slate-biased neutrals, one ink-blue
-   accent, semantic colour reserved for account state. */
+/* Layout: account tabs, a triage strip, a KPI band, then a masonry-ish grid of
+   modules. Cool slate neutrals with a single indigo accent; semantic colour is
+   reserved for account state so it never competes with the accent. */
 :root{
-  --bg:#eef1f4; --surface:#ffffff; --surface-2:#f6f8fa; --line:#dde3e9;
-  --ink:#121820; --ink-dim:#5b6775; --ink-faint:#8b97a5;
-  --accent:#10566f; --accent-soft:#e2eef3;
-  --ok:#0b6b45; --ok-bg:#e3f3ec;
-  --warn:#8a5300; --warn-bg:#fbf0dd;
-  --bad:#a81f2b; --bad-bg:#fbe9ea;
-  --display:"IBM Plex Sans",ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#eceff3; --surface:#fff; --surface-2:#f5f7fa; --surface-3:#eaeef3;
+  --line:#dce2e9; --line-2:#c8d1db;
+  --ink:#10151c; --ink-dim:#56626f; --ink-faint:#8795a3;
+  --accent:#3b45b8; --accent-soft:#e7e9fb;
+  --ok:#0a6b44; --ok-bg:#e2f3ea; --warn:#8a5200; --warn-bg:#fbf0dc;
+  --bad:#a81e2a; --bad-bg:#fbe8e9; --info:#0b5f79; --info-bg:#e0f0f5;
+  --display:"Bricolage Grotesque",ui-sans-serif,-apple-system,"Segoe UI",sans-serif;
   --body:"IBM Plex Sans",ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
 }
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
-  --bg:#0b0f14; --surface:#141a21; --surface-2:#1b222b; --line:#28313c;
-  --ink:#e7edf3; --ink-dim:#9aa7b5; --ink-faint:#6d7b8a;
-  --accent:#6fc2dc; --accent-soft:#132b35;
-  --ok:#5fd39b; --ok-bg:#0f2a20;
-  --warn:#e8b765; --warn-bg:#2b2114;
-  --bad:#f08b92; --bad-bg:#2d1518;
+  --bg:#0a0d12; --surface:#141921; --surface-2:#1a212a; --surface-3:#222b36;
+  --line:#28313d; --line-2:#36424f;
+  --ink:#e8edf3; --ink-dim:#9aa7b6; --ink-faint:#6b7a8a;
+  --accent:#9ba4ff; --accent-soft:#1a1f45;
+  --ok:#5ed39d; --ok-bg:#0e2a1e; --warn:#e9b765; --warn-bg:#2b2113;
+  --bad:#f28d94; --bad-bg:#2e1619; --info:#6fc6e0; --info-bg:#102a33;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#0b0f14; --surface:#141a21; --surface-2:#1b222b; --line:#28313c;
-  --ink:#e7edf3; --ink-dim:#9aa7b5; --ink-faint:#6d7b8a;
-  --accent:#6fc2dc; --accent-soft:#132b35;
-  --ok:#5fd39b; --ok-bg:#0f2a20;
-  --warn:#e8b765; --warn-bg:#2b2114;
-  --bad:#f08b92; --bad-bg:#2d1518;
+  --bg:#0a0d12; --surface:#141921; --surface-2:#1a212a; --surface-3:#222b36;
+  --line:#28313d; --line-2:#36424f;
+  --ink:#e8edf3; --ink-dim:#9aa7b6; --ink-faint:#6b7a8a;
+  --accent:#9ba4ff; --accent-soft:#1a1f45;
+  --ok:#5ed39d; --ok-bg:#0e2a1e; --warn:#e9b765; --warn-bg:#2b2113;
+  --bad:#f28d94; --bad-bg:#2e1619; --info:#6fc6e0; --info-bg:#102a33;
   color-scheme:dark;
 }
-html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
-  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1140px;margin:0 auto;padding-inline:16px;padding-block:26px 64px}
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+  line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:24px 72px}
 
-.masthead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:4px}
-h1{font-family:var(--display);font-size:clamp(22px,3.4vw,29px);font-weight:700;
-  letter-spacing:-.02em;margin:0;text-wrap:balance}
-.lede{color:var(--ink-dim);font-size:13.5px;margin:6px 0 20px;max-width:64ch}
+h1{font-family:var(--display);font-size:clamp(23px,3.2vw,31px);font-weight:700;
+  letter-spacing:-.025em;margin:0;text-wrap:balance}
+.lede{color:var(--ink-dim);font-size:13.5px;margin:7px 0 20px;max-width:70ch}
 
 /* key bar */
-.keybar{display:flex;gap:9px;flex-wrap:wrap;align-items:stretch;margin-bottom:10px}
-.keybar input[type=password]{flex:1 1 320px;min-width:0;font:inherit;font-size:14px;
-  font-family:var(--mono);padding:10px 13px;border-radius:10px;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink)}
+.keybar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+.keybar input{flex:1 1 330px;min-width:0;font:inherit;font-size:14px;font-family:var(--mono);
+  padding:11px 13px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
 .keybar input::placeholder{font-family:var(--body);color:var(--ink-faint)}
-.keybar input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-select{font:inherit;font-size:13px;padding:10px;border-radius:10px;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink)}
-button{font:inherit;font-size:13.5px;font-weight:600;padding:10px 17px;border-radius:10px;
-  border:1px solid transparent;background:var(--accent);color:var(--bg);cursor:pointer}
-button.ghost{background:transparent;border-color:var(--line);color:var(--ink-dim);font-weight:500}
-button:hover:not(:disabled){filter:brightness(1.08)}
-button:disabled{opacity:.55;cursor:default}
-.hint{font-size:12.5px;color:var(--ink-faint);margin:0 0 26px;max-width:72ch}
+select,button{font:inherit;font-size:13.5px;border-radius:10px;border:1px solid var(--line-2);
+  background:var(--surface);color:var(--ink);padding:11px 13px;cursor:pointer}
+button.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:600;padding-inline:19px}
+:root[data-theme="dark"] button.primary,
+:root:not([data-theme="light"]) button.primary{color:#0a0d12}
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]) button.primary{color:#fff} }
+button:hover:not(:disabled){border-color:var(--accent)}
+button.primary:hover:not(:disabled){filter:brightness(1.1);border-color:transparent}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:12.5px;color:var(--ink-faint);margin:0 0 24px;max-width:78ch}
 .hint strong{color:var(--ink-dim);font-weight:600}
+.hint code{font-family:var(--mono);font-size:11.5px}
 
-/* account cards */
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));align-items:start}
-.acct{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-width:0}
-.acct.demo{border-style:dashed;opacity:.9}
-.acct-head{display:flex;align-items:flex-start;gap:10px;padding:15px 17px 13px;
-  border-bottom:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap}
-.acct-name{font-weight:650;font-size:15.5px;letter-spacing:-.01em;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acct-sub{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:2px}
-.spacer{flex:1}
-.pill{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  padding:3px 8px;border-radius:999px;white-space:nowrap}
-.p-live{background:var(--ok-bg);color:var(--ok)}
-.p-test{background:var(--warn-bg);color:var(--warn)}
-.p-ok{background:var(--ok-bg);color:var(--ok)}
-.p-warn{background:var(--warn-bg);color:var(--warn)}
-.p-bad{background:var(--bad-bg);color:var(--bad)}
+/* account tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid var(--line);
+  padding-bottom:0}
+.tab{display:flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line);
+  border-bottom:none;border-radius:10px 10px 0 0;background:var(--surface-2);color:var(--ink-dim);
+  font-size:13.5px;font-weight:500;cursor:pointer;margin-bottom:-1px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600;
+  border-color:var(--line);box-shadow:inset 0 2px 0 var(--accent)}
+.tab .x{color:var(--ink-faint);font-size:15px;line-height:1;padding:0 2px;border:none;background:none}
+.tab .x:hover{color:var(--bad)}
+.tab .r{display:inline-flex;align-items:center;color:var(--ink-faint);padding:0 1px}
+.tab .r:hover{color:var(--accent)}
+.tab .r svg{width:13px;height:13px;display:block}
+.tab.busy .r{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;
+  color:var(--ink-faint)}
+.toolbar .spacer{flex:1}
+.toolbar button{padding:7px 13px;font-size:12.5px}
+.toolbar .fail{color:var(--bad)}
 
-.figs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
-.fig{background:var(--surface);padding:13px 17px}
-.fig .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);font-weight:600}
-.fig .val{font-size:21px;font-weight:650;letter-spacing:-.02em;margin-top:5px;
-  font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.fig .sub{font-size:11.5px;color:var(--ink-faint);margin-top:3px}
-.fig .val.attn{color:var(--bad)}
+/* triage */
+.triage{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.alert{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;border-radius:10px;
+  font-size:13.5px;border:1px solid currentColor}
+.alert .what{font-weight:650}
+.a-bad{background:var(--bad-bg);color:var(--bad)}
+.a-warn{background:var(--warn-bg);color:var(--warn)}
+.a-info{background:var(--info-bg);color:var(--info)}
+.alert .detail{color:inherit;opacity:.85;font-weight:400}
 
-.section{padding:13px 17px;border-top:1px solid var(--line)}
-.section h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
-  color:var(--ink-faint);font-weight:600;margin:0 0 9px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--ink-faint);font-weight:600;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
-td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+/* KPI band */
+.kpis{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:13px;overflow:hidden;margin-bottom:16px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);font-weight:600}
+.kpi .val{font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.025em;
+  margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .sub{font-size:11.5px;color:var(--ink-faint);margin-top:4px}
+.kpi .val.bad{color:var(--bad)} .kpi .val.ok{color:var(--ok)}
+
+/* module grid */
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}
+.topgrid{display:grid;gap:14px;align-items:start;margin-bottom:14px;
+  grid-template-columns:minmax(280px,340px) minmax(0,1fr)}
+.topgrid > *{min-width:0}
+.grid > *{min-width:0}
+@media (max-width:780px){ .topgrid{grid-template-columns:1fr} }
+.mod{background:var(--surface);border:1px solid var(--line);border-radius:13px;min-width:0;overflow:hidden}
+.mod.wide{grid-column:1/-1}
+.mod header{display:flex;align-items:baseline;gap:9px;padding:13px 16px 11px;border-bottom:1px solid var(--line);
+  background:var(--surface-2);flex-wrap:wrap}
+.mod h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);
+  font-weight:700;margin:0}
+.mod .meta{font-size:11.5px;color:var(--ink-faint);margin-left:auto}
+.mod .body{padding:13px 16px}
+.mod .body.flush{padding:0}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.055em;color:var(--ink-faint);
+  font-weight:600;padding:9px 8px;border-bottom:1px solid var(--line);background:var(--surface-2);
+  position:sticky;top:0}
+td{padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th:first-child,td:first-child{padding-left:12px}
+th:last-child,td:last-child{padding-right:12px}
 tr:last-child td{border-bottom:0}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.trunc{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-details summary{cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;list-style:none}
-details summary::-webkit-details-marker{display:none}
-details summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
-details[open] summary::before{content:"▾ "}
-.flag{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:10px 17px;
-  border-top:1px solid var(--line);background:var(--warn-bg);color:var(--warn)}
-.flag.bad{background:var(--bad-bg);color:var(--bad)}
+.scroll{max-height:320px;overflow:auto}
+.mod .body table{min-width:0}
+.mod .body > table, .scroll > table{display:table;width:100%}
+.xscroll{overflow-x:auto}
+.trunc{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mono{font-family:var(--mono);font-size:11.5px}
 .muted{color:var(--ink-faint)}
-.clearnote{margin:0;font-size:12.5px;color:var(--ink-dim)}
-.empty{border:1px dashed var(--line);border-radius:14px;padding:28px 20px;text-align:center;color:var(--ink-faint)}
-.err{padding:14px 17px;font-size:13px;color:var(--bad)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media (max-width:420px){ .figs{grid-template-columns:1fr} }
-</style>
+.dim{color:var(--ink-dim)}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 8px;
+  border-radius:999px;white-space:nowrap;text-transform:uppercase}
+.s-ok{background:var(--ok-bg);color:var(--ok)} .s-warn{background:var(--warn-bg);color:var(--warn)}
+.s-bad{background:var(--bad-bg);color:var(--bad)} .s-info{background:var(--info-bg);color:var(--info)}
+.s-live{background:var(--ok-bg);color:var(--ok)} .s-test{background:var(--warn-bg);color:var(--warn)}
 
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0;font-size:13px}
+dl.kv dt{color:var(--ink-faint)}
+dl.kv dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* hour histogram */
+.hours{display:flex;align-items:flex-end;gap:2px;height:84px;margin-top:4px}
+.hours .h{flex:1;min-width:0;background:var(--accent-soft);border-radius:2px 2px 0 0;position:relative}
+.hours .h i{position:absolute;inset:auto 0 0 0;background:var(--accent);border-radius:2px 2px 0 0;display:block}
+.hourlbl{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-faint);margin-top:5px}
+
+/* share bars */
+.share{display:flex;flex-direction:column;gap:9px}
+.share .row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:12.5px}
+.share .bar{grid-column:1/-1;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.share .bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+
+.empty{border:1px dashed var(--line-2);border-radius:13px;padding:34px 20px;text-align:center;color:var(--ink-faint)}
+.note{font-size:12.5px;color:var(--ink-dim);margin:0}
+.locked{font-size:12.5px;color:var(--ink-faint);margin:0}
+.errbox{padding:14px 16px;color:var(--bad);font-size:13px}
+@media (max-width:560px){
+  .alert{flex-direction:column;gap:3px}
+  .kpi .val{font-size:21px}
+  .wrap{padding-block:18px 56px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 </head>
 <body>
 <div class="wrap">
-  <header class="masthead"><h1>Stripe Takings</h1></header>
-  <p class="lede">Balance, payments and payouts across every Stripe account you
-     check. Keys go straight from this browser to Stripe over HTTPS — no server
-     in between, and nothing is saved anywhere.</p>
+  <h1>Stripe Operations</h1>
+  <p class="lede">Everything a read-only key can tell you about an account: money, risk,
+     customers and timing. Keys go straight from this browser to Stripe — no server in between.
+     A key stays in this page's memory so you can refresh an account, and is gone the
+     moment you close the tab or press Clear all. Nothing is ever written to disk.</p>
 
   <form class="keybar" id="form" autocomplete="off">
     <input id="key" type="password" required autocomplete="off" autocorrect="off"
-           autocapitalize="off" spellcheck="false"
-           placeholder="Paste a Stripe secret key, then Add account">
-    <select id="days" aria-label="Payments window">
+           autocapitalize="off" spellcheck="false" placeholder="Paste a Stripe secret key, then Add account">
+    <select id="days" aria-label="Reporting window">
       <option value="7">7 days</option>
       <option value="30" selected>30 days</option>
       <option value="90">90 days</option>
       <option value="365">1 year</option>
     </select>
-    <button id="add" type="submit">Add account</button>
-    <button id="reset" type="button" class="ghost">Clear all</button>
+    <button id="add" class="primary" type="submit">Add account</button>
+    <button id="reset" type="button">Clear all</button>
   </form>
-  <p class="hint">Add as many accounts as you like — each gets its own card.
-     Use <strong>restricted keys</strong> (<span style="font-family:var(--mono)">rk_live_…</span>,
-     read access to Balance, Charges, Payouts and Account): this page only ever reads,
-     and a read-only key can't move money if it leaks.</p>
+  <p class="hint">Use <strong>restricted keys</strong> (<code>rk_live_…</code>). This page only reads.
+     Each section needs its own read permission on the key — anything not granted is shown as
+     locked rather than failing the page. Grant: Balance, Charges, Payouts, Account, Disputes,
+     Refunds, Customers, Checkout Sessions, Subscriptions, Invoices, Events and Radar.</p>
 
-  <div class="grid" id="grid"></div>
+  <div id="tabs" class="tabs" role="tablist" hidden></div>
+  <div id="panel"></div>
 </div>
 
 <script>
@@ -158,246 +221,567 @@ function money(minor, cur){
   cur = (cur || "").toUpperCase();
   const div = ZERO_DEC.has(cur) ? 1 : 100;
   const v = (minor || 0) / div;
-  try { return new Intl.NumberFormat(undefined, {style:"currency", currency:cur,
+  try { return new Intl.NumberFormat(undefined,{style:"currency",currency:cur,
         minimumFractionDigits: div === 1 ? 0 : 2}).format(v); }
   catch { return v.toFixed(div === 1 ? 0 : 2) + " " + cur; }
 }
-const sumList = l => (l && l.length) ? l.map(b => money(b.amount, b.currency)).join(" · ") : "—";
-const when = ts => ts ? new Date(ts*1000).toLocaleString(undefined,
-  {month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit"}) : "—";
-const day = ts => ts ? new Date(ts*1000).toLocaleDateString(undefined,
-  {year:"numeric", month:"short", day:"2-digit"}) : "—";
-const label = s => String(s || "—").replace(/_/g, " ");
-const stateClass = s => ["succeeded","paid","available"].includes(s) ? "p-ok"
-  : ["pending","in_transit","part-refund","refunded"].includes(s) ? "p-warn" : "p-bad";
+const sumList = l => (l && l.length) ? l.map(b => money(b.amount,b.currency)).join(" · ") : "—";
+const dt = ts => ts ? new Date(ts*1000).toLocaleString(undefined,
+  {month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
+const d8 = ts => ts ? new Date(ts*1000).toLocaleDateString(undefined,
+  {year:"numeric",month:"short",day:"2-digit"}) : "—";
+const lbl = s => String(s || "—").replace(/_/g," ");
+const daysUntil = ts => Math.ceil((ts*1000 - Date.now()) / 86400000);
+const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
 
-/* ---- Stripe, called directly from this browser ---- */
-async function stripeGet(key, path, params){
+/* ---------- Stripe ---------- */
+async function sq(key, path, params){
   const url = new URL("https://api.stripe.com/v1/" + path);
-  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const r = await fetch(url, {headers:{
-    "Authorization": "Bearer " + key,
-    "Stripe-Version": "2025-08-27.basil"
-  }});
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error((body.error && body.error.message) || ("HTTP " + r.status));
-  return body;
-}
-
-function chargeState(c){
-  if (c.disputed) return "disputed";
-  const ar = c.amount_refunded || 0, a = c.amount || 0;
-  if (ar && ar >= a) return "refunded";
-  if (ar) return "part-refund";
-  return c.status || "—";
-}
-
-async function loadAccount(key, days){
-  const since = Math.floor(Date.now()/1000) - days*86400;
-  const [acct, bal, ch, po, btx] = await Promise.all([
-    stripeGet(key, "account"),
-    stripeGet(key, "balance"),
-    stripeGet(key, "charges", {limit:100, "created[gte]":since}),
-    stripeGet(key, "payouts", {limit:6}),
-    stripeGet(key, "balance_transactions", {limit:100})
-  ]);
-
-  const data = (ch.data || []);
-  const succ = data.filter(c => c.status === "succeeded");
-  const byCur = {};
-  for (const c of succ){
-    const cur = (c.currency || "").toUpperCase();
-    const b = byCur[cur] || (byCur[cur] = {currency:cur, gross:0, refunded:0, count:0});
-    b.gross += c.amount || 0; b.refunded += c.amount_refunded || 0; b.count++;
+  if (params) for (const [k,v] of Object.entries(params)) if (v !== undefined && v !== null) url.searchParams.set(k,v);
+  const r = await fetch(url, {headers:{"Authorization":"Bearer "+key,"Stripe-Version":"2025-08-27.basil"}});
+  const b = await r.json().catch(() => ({}));
+  if (!r.ok){
+    const e = new Error((b.error && b.error.message) || ("HTTP "+r.status));
+    e.permission = r.status === 403 || /permission|not have access|restricted/i.test(e.message);
+    throw e;
   }
-  Object.values(byCur).forEach(b => b.net = b.gross - b.refunded);
-  const s = acct.settings || {};
+  return b;
+}
 
-  // Money not yet available, grouped by the date Stripe will release it.
-  const pendingTx = (btx.data || []).filter(t => t.status === "pending" && t.available_on);
+const CALLS = since => ({
+  account:   ["account"],
+  balance:   ["balance"],
+  btx:       ["balance_transactions", {limit:100}],
+  charges:   ["charges", {limit:100, "created[gte]":since}],
+  payouts:   ["payouts", {limit:10}],
+  disputes:  ["disputes", {limit:25}],
+  efw:       ["radar/early_fraud_warnings", {limit:25}],
+  refunds:   ["refunds", {limit:50}],
+  customers: ["customers", {limit:100}],
+  sessions:  ["checkout/sessions", {limit:100, status:"open"}],
+  subs:      ["subscriptions", {limit:100, status:"active"}],
+  invoices:  ["invoices", {limit:100}],
+  events:    ["events", {limit:50}]
+});
+
+async function load(key, days){
+  const since = Math.floor(Date.now()/1000) - days*86400;
+  const spec = CALLS(since);
+  const names = Object.keys(spec);
+  const res = await Promise.allSettled(names.map(n => sq(key, spec[n][0], spec[n][1])));
+  const D = {}, ERR = {};
+  names.forEach((n,i) => {
+    if (res[i].status === "fulfilled") D[n] = res[i].value;
+    else ERR[n] = {message: res[i].reason.message, permission: !!res[i].reason.permission};
+  });
+  if (!D.account) throw new Error(ERR.account ? ERR.account.message : "Could not read the account");
+  return derive(key, days, D, ERR);
+}
+
+function derive(key, days, D, ERR){
+  const a = D.account, S = a.settings || {};
+  const list = k => (D[k] && D[k].data) || [];
+
+  const charges = list("charges");
+  const succ = charges.filter(c => c.status === "succeeded");
+  const failed = charges.filter(c => c.status === "failed");
+
+  // money by currency
+  const cur = {};
+  for (const c of succ){
+    const k = (c.currency||"").toUpperCase();
+    const b = cur[k] || (cur[k] = {currency:k, gross:0, refunded:0, count:0});
+    b.gross += c.amount||0; b.refunded += c.amount_refunded||0; b.count++;
+  }
+  Object.values(cur).forEach(b => b.net = b.gross - b.refunded);
+  const byCurrency = Object.values(cur).sort((x,y) => y.net - x.net);
+
+  // balance transactions: fees, FX, clearing
+  const btx = list("btx");
+  const feeCur = {};
+  let converted = 0, convertedTotal = 0;
+  for (const t of btx){
+    if (t.type !== "charge") continue;
+    const k = (t.currency||"").toUpperCase();
+    const f = feeCur[k] || (feeCur[k] = {currency:k, gross:0, fee:0, net:0, count:0});
+    f.gross += t.amount||0; f.fee += t.fee||0; f.net += t.net||0; f.count++;
+    if (t.exchange_rate){ converted++; convertedTotal += t.amount||0; }
+  }
+  const fees = Object.values(feeCur).sort((x,y) => y.gross - x.gross);
+
+  const pendingTx = btx.filter(t => t.status === "pending" && t.available_on);
+  // Group by the calendar day funds land, not the exact timestamp: Stripe
+  // stamps each transaction individually, which would otherwise give one row
+  // per payment instead of one row per payout day.
   const clearMap = {};
   for (const t of pendingTx){
-    const k = t.available_on + "|" + t.currency;
-    const row = clearMap[k] || (clearMap[k] = {on:t.available_on, currency:t.currency, net:0, count:0});
-    row.net += t.net || 0; row.count++;
+    const d = new Date(t.available_on*1000);
+    const k = d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate()+"|"+t.currency;
+    const r = clearMap[k] || (clearMap[k] = {on:t.available_on, currency:t.currency, net:0, count:0});
+    r.net += t.net||0; r.count++;
+    if (t.available_on < r.on) r.on = t.available_on;
   }
-  const clearing = Object.values(clearMap).sort((a,b) => a.on - b.on);
+  const clearing = Object.values(clearMap).sort((x,y) => x.on - y.on);
+  const newestCharge = btx.filter(t => t.type==="charge" && t.available_on && t.created)
+                          .sort((x,y) => y.created - x.created)[0];
+  const observedDays = newestCharge
+    ? Math.round((newestCharge.available_on - newestCharge.created)/86400) : null;
 
-  // How long the most recent payment actually took to clear, measured rather
-  // than assumed: Stripe counts business days, so this beats delay_days alone.
-  const charges = (btx.data || []).filter(t => t.type === "charge" && t.available_on && t.created);
-  const newest = charges.sort((a,b) => b.created - a.created)[0];
-  const observedDays = newest
-    ? Math.round((newest.available_on - newest.created) / 86400) : null;
+  // decline reasons
+  const declineMap = {};
+  for (const c of failed){
+    const k = c.failure_code || c.outcome && c.outcome.reason || "unknown";
+    const r = declineMap[k] || (declineMap[k] = {code:k, count:0, amount:0, currency:c.currency,
+      message:c.failure_message || ""});
+    r.count++; r.amount += c.amount||0;
+  }
+  const declines = Object.values(declineMap).sort((x,y) => y.count - x.count);
+
+  // who to chase: failed, never succeeded
+  const okEmails = new Set(succ.map(c => ((c.billing_details&&c.billing_details.email)||c.receipt_email||"").toLowerCase()).filter(Boolean));
+  const chaseMap = {};
+  for (const c of failed){
+    const em = ((c.billing_details&&c.billing_details.email)||c.receipt_email||"").toLowerCase();
+    if (!em || okEmails.has(em)) continue;
+    const r = chaseMap[em] || (chaseMap[em] = {email:em, tries:0, amount:0, currency:c.currency, last:0, why:""});
+    r.tries++; r.amount = Math.max(r.amount, c.amount||0);
+    if ((c.created||0) > r.last){ r.last = c.created; r.why = c.failure_message || lbl(c.failure_code||""); }
+  }
+  const chase = Object.values(chaseMap).sort((x,y) => y.amount - x.amount);
+
+  // card mix + hours + repeat
+  const brandMap = {}, countryMap = {}, hours = new Array(24).fill(0);
+  const emailCount = {};
+  for (const c of succ){
+    const card = (c.payment_method_details && c.payment_method_details.card) || {};
+    const b = (card.brand || "other").toLowerCase();
+    brandMap[b] = (brandMap[b]||0) + 1;
+    const co = (card.country || "??").toUpperCase();
+    countryMap[co] = (countryMap[co]||0) + 1;
+    if (c.created) hours[new Date(c.created*1000).getHours()]++;
+    const em = ((c.billing_details&&c.billing_details.email)||c.receipt_email||"").toLowerCase();
+    if (em) emailCount[em] = (emailCount[em]||0) + 1;
+  }
+  const share = m => Object.entries(m).map(([k,v]) => ({k,v})).sort((x,y) => y.v - x.v);
+  const buyers = Object.keys(emailCount).length;
+  const repeat = Object.values(emailCount).filter(n => n > 1).length;
+
+  const topCur = byCurrency[0];
+  const aov = topCur && topCur.count ? Math.round(topCur.gross / topCur.count) : null;
+
+  // disputes & fraud
+  const disputes = list("disputes").filter(d => d.status !== "won" && d.status !== "warning_closed");
+  const efw = list("efw").filter(w => !w.actionable === false || true);
+  const openDisputeAmt = disputes.reduce((n,d) => n + (d.amount||0), 0);
+
+  // subscriptions & invoices
+  const subs = list("subs");
+  const mrrMap = {};
+  for (const s of subs){
+    for (const it of ((s.items && s.items.data) || [])){
+      const p = it.price || {}; const rec = p.recurring || {};
+      if (!p.unit_amount) continue;
+      const qty = it.quantity || 1;
+      let per = p.unit_amount * qty;
+      const iv = rec.interval, ic = rec.interval_count || 1;
+      if (iv === "year") per = per / (12*ic);
+      else if (iv === "week") per = per * (52/12) / ic;
+      else if (iv === "day") per = per * 30 / ic;
+      else per = per / ic;
+      const k = (p.currency||"").toUpperCase();
+      mrrMap[k] = (mrrMap[k]||0) + per;
+    }
+  }
+  const mrr = Object.entries(mrrMap).map(([currency,amount]) => ({currency, amount:Math.round(amount)}));
+  const unpaid = list("invoices").filter(i => i.status === "open");
+  const sessions = list("sessions").filter(s => s.payment_status === "unpaid");
+
+  const ext = (a.external_accounts && a.external_accounts.data) || [];
+  const bank = ext.find(e => e.object === "bank_account") || ext[0] || null;
 
   return {
-    clearing, observedDays,
+    key: key.slice(0,11) + "…", days,
     mode: /_live_/.test(key) ? "LIVE" : /_test_/.test(key) ? "TEST" : "UNKNOWN",
     restricted: /^rk_/.test(key),
-    days,
-    id: acct.id,
-    name: (s.dashboard && s.dashboard.display_name) ||
-          (acct.business_profile && acct.business_profile.name) || acct.id,
-    country: acct.country || "—",
-    currency: (acct.default_currency || "").toUpperCase() || "—",
-    chargesEnabled: acct.charges_enabled,
-    payoutsEnabled: acct.payouts_enabled,
-    schedule: (s.payouts && s.payouts.schedule && s.payouts.schedule.interval) || "—",
-    delayDays: s.payouts && s.payouts.schedule ? s.payouts.schedule.delay_days : null,
-    currentlyDue: (acct.requirements && acct.requirements.currently_due) || [],
-    disabledReason: acct.requirements && acct.requirements.disabled_reason,
-    available: bal.available || [],
-    pending: bal.pending || [],
+    err: ERR,
+    id: a.id,
+    name: (S.dashboard && S.dashboard.display_name) || (a.business_profile && a.business_profile.name) || a.id,
+    created: a.created, email: a.email,
+    country: a.country || "—", currency: (a.default_currency||"").toUpperCase() || "—",
+    timezone: (S.dashboard && S.dashboard.timezone) || "—",
+    businessType: a.business_type, acctType: a.type,
+    url: a.business_profile && a.business_profile.url,
+    statement: (S.payments && S.payments.statement_descriptor) || null,
+    chargesEnabled: a.charges_enabled, payoutsEnabled: a.payouts_enabled,
+    detailsSubmitted: a.details_submitted,
+    schedule: (S.payouts && S.payouts.schedule && S.payouts.schedule.interval) || "—",
+    delayDays: S.payouts && S.payouts.schedule ? S.payouts.schedule.delay_days : null,
+    currentlyDue: (a.requirements && a.requirements.currently_due) || [],
+    pastDue: (a.requirements && a.requirements.past_due) || [],
+    deadline: a.requirements && a.requirements.current_deadline,
+    disabledReason: a.requirements && a.requirements.disabled_reason,
+    bank,
+    available: (D.balance && D.balance.available) || [],
+    pending: (D.balance && D.balance.pending) || [],
+    reserved: (D.balance && D.balance.connect_reserved) || [],
+    byCurrency, fees, converted, convertedTotal, clearing, observedDays,
     counts: {
-      returned: data.length, hasMore: !!ch.has_more, succeeded: succ.length,
-      pending: data.filter(c => c.status === "pending").length,
-      failed: data.filter(c => c.status === "failed").length,
-      refunded: data.filter(c => (c.amount_refunded||0) > 0).length,
-      disputed: data.filter(c => c.disputed).length
+      total: charges.length, hasMore: !!(D.charges && D.charges.has_more),
+      succeeded: succ.length, failed: failed.length,
+      refunded: charges.filter(c => (c.amount_refunded||0) > 0).length,
+      disputed: charges.filter(c => c.disputed).length
     },
-    byCurrency: Object.values(byCur).sort((a,b) => b.net - a.net),
-    recent: data.slice(0,8).map(c => ({
-      created:c.created, state:chargeState(c), amount:c.amount||0, currency:c.currency,
-      who:(c.billing_details && c.billing_details.email) || c.receipt_email ||
-          (c.billing_details && c.billing_details.name) || "—",
-      note:c.description || c.failure_message || ""
+    declines, chase, aov, buyers, repeat,
+    brands: share(brandMap), countries: share(countryMap), hours,
+    recent: charges.slice(0,25).map(c => ({
+      created:c.created,
+      state: c.disputed ? "disputed"
+           : (c.amount_refunded||0) >= (c.amount||0) && (c.amount_refunded||0) > 0 ? "refunded"
+           : (c.amount_refunded||0) > 0 ? "part refund" : c.status,
+      amount:c.amount||0, currency:c.currency,
+      who:(c.billing_details&&c.billing_details.email)||c.receipt_email||(c.billing_details&&c.billing_details.name)||"—",
+      brand:(c.payment_method_details&&c.payment_method_details.card&&c.payment_method_details.card.brand)||"",
+      note:c.description||c.failure_message||""
     })),
-    payouts: (po.data || []).map(p => ({
-      arrival:p.arrival_date, amount:p.amount||0, currency:p.currency,
-      status:p.status, failure:p.failure_message
-    }))
+    payouts: list("payouts").map(p => ({arrival:p.arrival_date, amount:p.amount||0, currency:p.currency,
+      status:p.status, failure:p.failure_message, method:p.method})),
+    disputes: disputes.map(d => ({amount:d.amount, currency:d.currency, reason:d.reason, status:d.status,
+      due:(d.evidence_details&&d.evidence_details.due_by)||null,
+      submitted:(d.evidence_details&&d.evidence_details.submission_count)||0, created:d.created})),
+    openDisputeAmt,
+    efw: efw.map(w => ({created:w.created, reason:w.reason, actionable:w.actionable, charge:w.charge})),
+    refunds: list("refunds").slice(0,25).map(r => ({created:r.created, amount:r.amount, currency:r.currency,
+      reason:r.reason, status:r.status})),
+    customersTotal: list("customers").length,
+    customersMore: !!(D.customers && D.customers.has_more),
+    newCustomers: list("customers").filter(c => c.created >= Math.floor(Date.now()/1000) - days*86400).length,
+    subs: subs.length, mrr,
+    unpaid: unpaid.map(i => ({number:i.number, amount:i.amount_due, currency:i.currency,
+      due:i.due_date, email:i.customer_email, created:i.created})),
+    unpaidTotal: unpaid.reduce((n,i) => n + (i.amount_due||0), 0),
+    unpaidCur: unpaid[0] ? unpaid[0].currency : null,
+    sessions: sessions.length,
+    sessionsValue: sessions.reduce((n,s) => n + (s.amount_total||0), 0),
+    sessionsCur: sessions[0] ? sessions[0].currency : null,
+    events: list("events").slice(0,25).map(e => ({created:e.created, type:e.type}))
   };
 }
 
-/* ---- rendering ---- */
-function cardHTML(a){
-  const flags = [];
-  if (a.disabledReason)
-    flags.push(['bad', 'Account restricted by Stripe — ' + esc(label(a.disabledReason))]);
-  if (a.chargesEnabled === false)
-    flags.push(['bad', 'Charges disabled — this account cannot take payments.']);
-  if (a.payoutsEnabled === false)
-    flags.push(['', 'Payouts disabled — money builds up but will not reach the bank.']);
-  if (a.currentlyDue && a.currentlyDue.length)
-    flags.push(['', 'Stripe needs: ' + a.currentlyDue.map(x => esc(label(x))).join(", ")]);
-  if (a.schedule === "manual")
-    flags.push(['', 'Payouts are manual — nothing reaches the bank until you send it.']);
-  if (!a.restricted && a.mode === "LIVE")
-    flags.push(['', 'That is a full secret key. A restricted read-only key is safer here.']);
+/* ---------- rendering ---------- */
+const mod = (title, meta, body, cls) =>
+  `<section class="mod${cls?" "+cls:""}"><header><h2>${esc(title)}</h2>${
+    meta ? `<span class="meta">${esc(meta)}</span>` : ""}</header>${body}</section>`;
+const locked = (A, k, what) => A.err[k]
+  ? `<div class="body"><p class="locked">${A.err[k].permission
+      ? `This key cannot read ${esc(what)}. Add the permission in Stripe → Developers → API keys.`
+      : esc(A.err[k].message)}</p></div>` : null;
 
-  const attn = a.counts.failed + a.counts.disputed;
-  const netLine = a.byCurrency.length ? a.byCurrency.map(c => money(c.net, c.currency)).join(" · ") : "—";
+function triage(A){
+  const out = [];
+  const add = (k, what, detail) => out.push(`<div class="alert a-${k}"><span class="what">${what}</span>
+    <span class="detail">${detail}</span></div>`);
 
-  return `
-  <article class="acct">
-    <div class="acct-head">
-      <div style="min-width:0">
-        <div class="acct-name">${esc(a.name)}</div>
-        <div class="acct-sub">${esc(a.id)} · ${esc(a.country)} · ${esc(a.currency)}</div>
-      </div>
-      <span class="spacer"></span>
-      <span class="pill ${a.mode === "LIVE" ? "p-live" : "p-test"}">${esc(a.mode)}</span>
-    </div>
-
-    <div class="figs">
-      <div class="fig"><div class="lbl">Available now</div>
-        <div class="val">${esc(sumList(a.available))}</div>
-        <div class="sub">ready to pay out</div></div>
-      <div class="fig"><div class="lbl">Pending</div>
-        <div class="val">${esc(sumList(a.pending))}</div>
-        <div class="sub">still settling</div></div>
-      <div class="fig"><div class="lbl">Net · ${a.days}d</div>
-        <div class="val">${esc(netLine)}</div>
-        <div class="sub">${a.counts.succeeded} successful payment${a.counts.succeeded === 1 ? "" : "s"}</div></div>
-      <div class="fig"><div class="lbl">Needs attention</div>
-        <div class="val${attn ? " attn" : ""}">${attn}</div>
-        <div class="sub">${a.counts.failed} failed · ${a.counts.disputed} disputed · ${a.counts.refunded} refunded</div></div>
-    </div>
-
-    ${flags.map(([k, t]) => `<div class="flag${k ? " " + k : ""}">${t}</div>`).join("")}
-
-    <div class="section">
-      <h3>When money becomes available</h3>
-      <p class="clearnote">${
-        a.observedDays != null
-          ? `A payment taken today should clear in about <strong>${a.observedDays} day${a.observedDays === 1 ? "" : "s"}</strong>, based on the most recent one. `
-          : `This account's payout delay is <strong>${a.delayDays != null ? a.delayDays + " days" : "not set"}</strong>. `
-      }${a.schedule === "manual"
-          ? "Once clear it sits in Available until you send a payout yourself."
-          : `Payouts then run ${esc(label(a.schedule))}.`}</p>
-      ${a.clearing.length ? `<table style="margin-top:9px">
-        <thead><tr><th>Clears on</th><th class="num">In</th><th class="num">Amount (net)</th></tr></thead>
-        <tbody>${a.clearing.map(c => {
-          const days = Math.max(0, Math.ceil((c.on*1000 - Date.now()) / 86400000));
-          return `<tr><td>${esc(day(c.on))}</td>
-            <td class="num muted">${days === 0 ? "today" : days + "d"}</td>
-            <td class="num">${esc(money(c.net, c.currency))}</td></tr>`;
-        }).join("")}</tbody>
-      </table>` : `<p class="muted" style="margin:8px 0 0;font-size:12.5px">Nothing pending — everything taken so far has already cleared.</p>`}
-    </div>
-
-    <div class="section">
-      <h3>Status</h3>
-      <table><tbody>
-        <tr><td class="muted">Charges</td><td class="num"><span class="pill ${a.chargesEnabled ? "p-ok" : "p-bad"}">${a.chargesEnabled ? "enabled" : "off"}</span></td></tr>
-        <tr><td class="muted">Payouts</td><td class="num"><span class="pill ${a.payoutsEnabled ? "p-ok" : "p-bad"}">${a.payoutsEnabled ? "enabled" : "off"}</span></td></tr>
-        <tr><td class="muted">Schedule</td><td class="num">${esc(label(a.schedule))}${a.delayDays != null ? ` (+${a.delayDays}d)` : ""}</td></tr>
-      </tbody></table>
-    </div>
-
-    ${a.byCurrency.length ? `
-    <div class="section">
-      <h3>Received · last ${a.days} days</h3>
-      <table>
-        <thead><tr><th>Cur</th><th class="num">No.</th><th class="num">Gross</th><th class="num">Net</th></tr></thead>
-        <tbody>${a.byCurrency.map(c => `<tr><td>${esc(c.currency)}</td><td class="num">${c.count}</td>
-          <td class="num">${esc(money(c.gross, c.currency))}</td>
-          <td class="num"><strong>${esc(money(c.net, c.currency))}</strong></td></tr>`).join("")}</tbody>
-      </table>
-      ${a.counts.hasMore ? `<p class="muted" style="font-size:11.5px;margin:8px 0 0">Over 100 charges in this window — totals cover the 100 most recent. Pick a shorter window for exact figures.</p>` : ""}
-    </div>` : ""}
-
-    ${a.recent.length ? `
-    <div class="section">
-      <details><summary>Recent payments (${a.recent.length})</summary>
-        <table style="margin-top:9px">
-          <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th>Customer</th></tr></thead>
-          <tbody>${a.recent.map(c => `<tr>
-            <td class="muted">${esc(when(c.created))}</td>
-            <td><span class="pill ${stateClass(c.state)}">${esc(label(c.state))}</span></td>
-            <td class="num">${esc(money(c.amount, c.currency))}</td>
-            <td class="trunc">${esc(c.who)}</td></tr>`).join("")}</tbody>
-        </table>
-      </details>
-    </div>` : ""}
-
-    <div class="section">
-      <details><summary>Payouts to bank (${a.payouts.length})</summary>
-        ${a.payouts.length ? `<table style="margin-top:9px">
-          <thead><tr><th>Arrives</th><th class="num">Amount</th><th>State</th></tr></thead>
-          <tbody>${a.payouts.map(p => `<tr><td class="muted">${esc(day(p.arrival))}</td>
-            <td class="num">${esc(money(p.amount, p.currency))}</td>
-            <td><span class="pill ${stateClass(p.status)}">${esc(label(p.status))}</span>
-            ${p.failure ? `<div class="muted" style="font-size:11px">${esc(p.failure)}</div>` : ""}</td></tr>`).join("")}</tbody>
-        </table>` : `<p class="muted" style="margin:9px 0 0;font-size:12.5px">No payouts yet.</p>`}
-      </details>
-    </div>
-  </article>`;
+  if (A.disabledReason) add("bad","Account restricted", esc(lbl(A.disabledReason)));
+  if (A.chargesEnabled === false) add("bad","Charges disabled","This account cannot take payments.");
+  const due = A.disputes.filter(d => d.due && d.submitted === 0);
+  if (due.length){
+    const soonest = Math.min(...due.map(d => d.due));
+    const n = daysUntil(soonest);
+    add("bad", `${due.length} dispute${due.length>1?"s":""} awaiting evidence`,
+      `${esc(money(A.openDisputeAmt, A.disputes[0].currency))} at risk · earliest deadline ${esc(d8(soonest))}${
+        n <= 3 ? ` — ${n <= 0 ? "overdue" : n + " day" + (n===1?"":"s") + " left"}` : ""}. Unanswered disputes are lost by default.`);
+  }
+  const act = A.efw.filter(w => w.actionable);
+  if (act.length) add("bad", `${act.length} early fraud warning${act.length>1?"s":""}`,
+    "The bank flagged these before a dispute. Refunding now avoids the dispute fee.");
+  if (A.pastDue && A.pastDue.length) add("bad","Information past due", esc(A.pastDue.map(lbl).join(", ")));
+  if (A.deadline) add("warn","Stripe deadline", `${esc(d8(A.deadline))} — ${esc((A.currentlyDue||[]).map(lbl).join(", ") || "documents required")}`);
+  else if (A.currentlyDue && A.currentlyDue.length) add("warn","Stripe needs", esc(A.currentlyDue.map(lbl).join(", ")));
+  if (A.payoutsEnabled === false) add("warn","Payouts disabled","Money builds up but will not reach the bank.");
+  else if (A.schedule === "manual") add("warn","Payouts are manual","Cleared money sits in Available until you send a payout yourself.");
+  if (A.chase.length){
+    const top = A.chase[0];
+    add("warn", `${A.chase.length} customer${A.chase.length>1?"s":""} failed and never came back`,
+      `Largest ${esc(money(top.amount, top.currency))} from ${esc(top.email)} — recoverable with a payment link.`);
+  }
+  if (A.converted) add("info","Currency conversion",
+    `${A.converted} payment${A.converted>1?"s":""} were converted into ${esc(A.currency)}. Stripe charges an FX fee on each.`);
+  if (!A.restricted && A.mode === "LIVE") add("info","Full secret key",
+    "A restricted read-only key would be safer for this page.");
+  return out.length ? `<div class="triage">${out.join("")}</div>` : "";
 }
 
-const accounts = [];   // {key, data} — held in memory only, never stored
+function kpis(A){
+  const net = A.byCurrency.length ? A.byCurrency.map(c => money(c.net,c.currency)).join(" · ") : "—";
+  const feeTotal = A.fees.length ? A.fees.map(f => money(f.fee,f.currency)).join(" · ") : "—";
+  const feeRate = A.fees.length && A.fees[0].gross ? pct(A.fees[0].fee, A.fees[0].gross) : null;
+  const attn = A.counts.failed + A.counts.disputed + A.efw.filter(w=>w.actionable).length;
+  const k = (l,v,s,c) => `<div class="kpi"><div class="lbl">${l}</div>
+    <div class="val${c?" "+c:""}">${v}</div><div class="sub">${s}</div></div>`;
+  return `<div class="kpis">
+    ${k("Available", esc(sumList(A.available)), "ready to pay out")}
+    ${k("Pending", esc(sumList(A.pending)), A.observedDays != null ? `clears in ~${A.observedDays}d` : "still settling")}
+    ${k("Net · "+A.days+"d", esc(net), `${A.counts.succeeded} payment${A.counts.succeeded===1?"":"s"}`)}
+    ${k("Stripe fees · "+A.days+"d", esc(feeTotal), feeRate != null ? feeRate+"% of gross" : "—")}
+    ${k("Average order", A.aov != null ? esc(money(A.aov, A.byCurrency[0].currency)) : "—",
+        A.buyers ? `${A.buyers} buyer${A.buyers===1?"":"s"}, ${A.repeat} repeat` : "—")}
+    ${k("Needs attention", attn, `${A.counts.failed} failed · ${A.disputes.length} disputed`, attn ? "bad" : "ok")}
+  </div>`;
+}
+
+function panelFor(A){
+  const M = [];
+
+  /* clearing */
+  M.push(mod("When money becomes available", null, `<div class="body">
+    <p class="note">${A.observedDays != null
+      ? `A payment taken today should clear in about <strong>${A.observedDays} day${A.observedDays===1?"":"s"}</strong>, measured from the most recent one.`
+      : `Configured delay: <strong>${A.delayDays != null ? A.delayDays+" days" : "not set"}</strong>.`}
+      ${A.schedule === "manual" ? " It then waits in Available until you send a payout."
+        : ` Payouts then run ${esc(lbl(A.schedule))}.`}</p>
+    ${A.clearing.length ? `<div class="scroll" style="margin-top:10px"><table>
+      <thead><tr><th>Clears on</th><th class="num">In</th><th class="num">Items</th><th class="num">Net</th></tr></thead><tbody>
+      ${A.clearing.map(c => {const n = Math.max(0, daysUntil(c.on));
+        return `<tr><td>${esc(d8(c.on))}</td><td class="num muted">${n===0?"today":n+"d"}</td>
+        <td class="num muted">${c.count}</td>
+        <td class="num">${esc(money(c.net,c.currency))}</td></tr>`;}).join("")}
+    </tbody></table></div>` : `<p class="muted" style="margin-top:8px;font-size:12.5px">Nothing pending.</p>`}
+  </div>`));
+
+  /* fees & FX */
+  M.push(mod("Fees and conversion", "last 100 transactions",
+    locked(A,"btx","balance transactions") || `<div class="body">
+    ${A.fees.length ? `<div class="xscroll"><table><thead><tr><th>Cur</th><th class="num">Gross</th><th class="num">Stripe fee</th><th class="num">You keep</th></tr></thead><tbody>
+      ${A.fees.map(f => `<tr><td>${esc(f.currency)}</td><td class="num">${esc(money(f.gross,f.currency))}</td>
+        <td class="num">${esc(money(f.fee,f.currency))}<div class="muted" style="font-size:11px">${pct(f.fee,f.gross)}%</div></td>
+        <td class="num"><strong>${esc(money(f.net,f.currency))}</strong></td></tr>`).join("")}
+    </tbody></table></div>` : `<p class="muted">No settled charges yet.</p>`}
+    ${A.converted ? `<p class="note" style="margin-top:11px">${A.converted} payment${A.converted>1?"s":""} were
+      converted into ${esc(A.currency)} before settling. Stripe takes an FX fee on each — taking payment in a
+      ${esc(A.currency)} account, or holding a balance in the charge currency, avoids it.</p>` : ""}
+  </div>`));
+
+  /* disputes */
+  M.push(mod("Disputes", A.disputes.length ? money(A.openDisputeAmt, A.disputes[0].currency)+" at risk" : "none open",
+    locked(A,"disputes","disputes") || (A.disputes.length ? `<div class="body flush"><div class="scroll">
+    <table><thead><tr><th>Opened</th><th class="num">Amount</th><th>Reason</th><th>Evidence due</th></tr></thead><tbody>
+      ${A.disputes.map(d => {const n = d.due ? daysUntil(d.due) : null;
+        return `<tr><td class="muted">${esc(d8(d.created))}</td>
+        <td class="num">${esc(money(d.amount,d.currency))}</td>
+        <td>${esc(lbl(d.reason))}<div class="muted mono">${esc(lbl(d.status))}</div></td>
+        <td>${d.due ? `${esc(d8(d.due))}<div class="${n<=3?"":"muted"}" style="font-size:11.5px">${
+          d.submitted ? "evidence sent" : n <= 0 ? "overdue" : n+" day"+(n===1?"":"s")+" left"}</div>` : "—"}</td></tr>`;}).join("")}
+    </tbody></table></div></div>` : `<div class="body"><p class="muted">No open disputes.</p></div>`)));
+
+  /* fraud warnings */
+  M.push(mod("Early fraud warnings", null,
+    locked(A,"efw","Radar fraud warnings") || (A.efw.length ? `<div class="body flush"><div class="scroll">
+    <table><thead><tr><th>Flagged</th><th>Reason</th><th>Action</th></tr></thead><tbody>
+      ${A.efw.map(w => `<tr><td class="muted">${esc(d8(w.created))}</td><td>${esc(lbl(w.reason))}</td>
+        <td>${w.actionable ? `<span class="pill s-bad">refund to avoid dispute</span>` : `<span class="pill s-info">no action</span>`}</td></tr>`).join("")}
+    </tbody></table></div></div>` : `<div class="body"><p class="muted">None. The bank has not flagged any payment as fraudulent.</p></div>`)));
+
+  /* recoverable */
+  M.push(mod("Worth chasing", A.chase.length ? A.chase.length+" customers" : null, `<div class="body">
+    ${A.chase.length ? `<p class="note">Cards declined and the customer never completed a payment. Send a payment link.</p>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Customer</th><th class="num">Tries</th><th class="num">Amount</th></tr></thead><tbody>
+      ${A.chase.map(c => `<tr><td class="trunc">${esc(c.email)}
+        <div class="muted trunc" style="font-size:11px">${esc(c.why||"—")}</div></td>
+        <td class="num">${c.tries}</td>
+        <td class="num">${esc(money(c.amount,c.currency))}</td></tr>`).join("")}
+    </tbody></table></div>` : `<p class="muted">Nobody failed to pay without later succeeding.</p>`}
+  </div>`));
+
+  /* decline reasons */
+  if (A.declines.length) M.push(mod("Why payments failed", A.counts.failed+" in "+A.days+"d", `<div class="body">
+    <table><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">Value</th></tr></thead><tbody>
+      ${A.declines.map(d => `<tr><td>${esc(lbl(d.code))}<div class="muted" style="font-size:11.5px">${esc(d.message||"")}</div></td>
+        <td class="num">${d.count}</td><td class="num">${esc(money(d.amount,d.currency))}</td></tr>`).join("")}
+    </tbody></table></div>`));
+
+  /* sales pattern */
+  const maxH = Math.max(1, ...A.hours);
+  M.push(mod("When people buy", "local time", `<div class="body">
+    <div class="hours">${A.hours.map((n,h) => `<div class="h" title="${h}:00 — ${n} payment${n===1?"":"s"}">
+      <i style="height:${Math.round(n/maxH*100)}%"></i></div>`).join("")}</div>
+    <div class="hourlbl"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+  </div>`));
+
+  /* card mix */
+  const totalBrand = A.brands.reduce((n,b) => n+b.v, 0);
+  M.push(mod("How they pay", null, `<div class="body"><div class="share">
+    ${A.brands.length ? A.brands.slice(0,6).map(b => `<div class="row">
+      <span>${esc(lbl(b.k))}</span><span class="num muted">${b.v} · ${pct(b.v,totalBrand)}%</span>
+      <span class="bar"><i style="width:${pct(b.v,totalBrand)}%"></i></span></div>`).join("")
+      : `<p class="muted">No card data.</p>`}
+  </div>
+  ${A.countries.length ? `<p class="note" style="margin-top:13px">Cards issued in ${
+    A.countries.slice(0,4).map(c => esc(c.k)+" "+pct(c.v,totalBrand)+"%").join(", ")}.</p>` : ""}
+  </div>`));
+
+  /* customers */
+  M.push(mod("Customers", null, locked(A,"customers","customers") || `<div class="body">
+    <dl class="kv">
+      <dt>On file</dt><dd>${A.customersTotal}${A.customersMore ? "+" : ""}</dd>
+      <dt>Added in ${A.days}d</dt><dd>${A.newCustomers}</dd>
+      <dt>Buyers in ${A.days}d</dt><dd>${A.buyers}</dd>
+      <dt>Bought more than once</dt><dd>${A.repeat}${A.buyers ? ` · ${pct(A.repeat,A.buyers)}%` : ""}</dd>
+    </dl></div>`));
+
+  /* subscriptions */
+  if (!A.err.subs && (A.subs || A.mrr.length)) M.push(mod("Subscriptions", A.subs+" active", `<div class="body">
+    <dl class="kv"><dt>Active</dt><dd>${A.subs}</dd>
+    <dt>Monthly recurring</dt><dd>${A.mrr.length ? A.mrr.map(m => esc(money(m.amount,m.currency))).join(" · ") : "—"}</dd></dl>
+  </div>`));
+
+  /* unpaid invoices */
+  if (!A.err.invoices && A.unpaid.length) M.push(mod("Unpaid invoices",
+    money(A.unpaidTotal, A.unpaidCur), `<div class="body flush"><div class="scroll">
+    <table><thead><tr><th>Invoice</th><th class="num">Due</th><th class="num">Amount</th></tr></thead><tbody>
+      ${A.unpaid.map(i => `<tr><td>${esc(i.number||"—")}<div class="muted trunc">${esc(i.email||"")}</div></td>
+        <td class="num muted">${i.due ? esc(d8(i.due)) : "—"}</td>
+        <td class="num">${esc(money(i.amount,i.currency))}</td></tr>`).join("")}
+    </tbody></table></div></div>`));
+
+  /* abandoned checkouts */
+  if (!A.err.sessions) M.push(mod("Abandoned checkouts", null, `<div class="body">
+    ${A.sessions ? `<dl class="kv"><dt>Open, unpaid</dt><dd>${A.sessions}</dd>
+      <dt>Value left behind</dt><dd>${esc(money(A.sessionsValue, A.sessionsCur))}</dd></dl>
+      <p class="note" style="margin-top:11px">Checkout sessions started but never paid.</p>`
+      : `<p class="muted">No open checkout sessions.</p>`}
+  </div>`));
+
+  /* recent payments — pinned to the top row */
+  const recentMod = mod("Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
+    `<div class="body flush"><div class="scroll"><table>
+    <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th>Customer</th></tr></thead><tbody>
+      ${A.recent.length ? A.recent.map(c => `<tr><td class="muted">${esc(dt(c.created))}</td>
+        <td><span class="pill ${c.state==="succeeded"?"s-ok":c.state==="failed"||c.state==="disputed"?"s-bad":"s-warn"}">${esc(c.state)}</span></td>
+        <td class="num">${esc(money(c.amount,c.currency))}</td>
+        <td class="trunc">${esc(c.who)}${c.brand?`<div class="muted" style="font-size:11px">${esc(c.brand)}</div>`:""}</td></tr>`).join("")
+        : `<tr><td colspan="4" class="muted">No payments in this window.</td></tr>`}
+    </tbody></table></div></div>`);
+
+  /* payouts + refunds side by side */
+  M.push(mod("Payouts to bank", null, locked(A,"payouts","payouts") || `<div class="body flush"><div class="scroll">
+    ${A.payouts.length ? `<table><thead><tr><th>Arrives</th><th class="num">Amount</th><th>State</th></tr></thead><tbody>
+      ${A.payouts.map(p => `<tr><td class="muted">${esc(d8(p.arrival))}</td>
+        <td class="num">${esc(money(p.amount,p.currency))}</td>
+        <td><span class="pill ${p.status==="paid"?"s-ok":p.status==="failed"?"s-bad":"s-warn"}">${esc(lbl(p.status))}</span>
+        ${p.failure?`<div class="muted" style="font-size:11px">${esc(p.failure)}</div>`:""}</td></tr>`).join("")}
+    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No payouts yet.</p>`}
+  </div></div>`));
+
+  M.push(mod("Refunds", null, locked(A,"refunds","refunds") || `<div class="body flush"><div class="scroll">
+    ${A.refunds.length ? `<table><thead><tr><th>When</th><th class="num">Amount</th><th>Reason</th></tr></thead><tbody>
+      ${A.refunds.map(r => `<tr><td class="muted">${esc(d8(r.created))}</td>
+        <td class="num">${esc(money(r.amount,r.currency))}</td><td>${esc(lbl(r.reason||"—"))}</td></tr>`).join("")}
+    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No refunds.</p>`}
+  </div></div>`));
+
+  /* account details — pinned to the top row */
+  const accountMod = mod("Account", null, `<div class="body"><dl class="kv">
+    <dt>Opened</dt><dd>${esc(d8(A.created))}${A.created ? ` <span class="muted">· ${
+      Math.floor((Date.now()/1000 - A.created)/86400)} days ago</span>` : ""}</dd>
+    <dt>Account ID</dt><dd class="mono">${esc(A.id)}</dd>
+    <dt>Email</dt><dd class="trunc">${esc(A.email||"—")}</dd>
+    <dt>Country · currency</dt><dd>${esc(A.country)} · ${esc(A.currency)}</dd>
+    <dt>Time zone</dt><dd>${esc(A.timezone)}</dd>
+    <dt>Business type</dt><dd>${esc(lbl(A.businessType||"—"))}</dd>
+    <dt>Statement name</dt><dd>${esc(A.statement||"—")}</dd>
+    <dt>Payout account</dt><dd>${A.bank ? esc((A.bank.bank_name||A.bank.object)+" ····"+(A.bank.last4||"")) : "—"}</dd>
+    <dt>Charges</dt><dd><span class="pill ${A.chargesEnabled?"s-ok":"s-bad"}">${A.chargesEnabled?"enabled":"off"}</span></dd>
+    <dt>Payouts</dt><dd><span class="pill ${A.payoutsEnabled?"s-ok":"s-bad"}">${A.payoutsEnabled?"enabled":"off"}</span>
+      <span class="muted">${esc(lbl(A.schedule))}${A.delayDays!=null?` +${A.delayDays}d`:""}</span></dd>
+  </dl></div>`);
+
+  /* activity */
+  if (!A.err.events && A.events.length) M.push(mod("Recent activity", "last 30 days only",
+    `<div class="body flush"><div class="scroll"><table><tbody>
+      ${A.events.map(e => `<tr><td class="muted" style="width:120px">${esc(dt(e.created))}</td>
+        <td class="mono">${esc(e.type)}</td></tr>`).join("")}
+    </tbody></table></div></div>`));
+
+  return triage(A) + kpis(A)
+       + `<div class="topgrid">${accountMod}${recentMod}</div>`
+       + `<div class="grid">${M.join("")}</div>`;
+}
+
+/* ---------- state ---------- */
+// {key, A, at} or {error}. The key stays in memory only, so Refresh can re-read
+// the account; it is never written to disk or browser storage, and closing the
+// tab or pressing Clear all discards it.
+const accounts = [];
+let active = 0;
+
+const REFRESH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>`;
+
+async function refreshAccount(i){
+  const row = accounts[i];
+  if (!row || !row.key || row.busy) return;
+  row.busy = true; row.failed = null; render();
+  try {
+    row.A = await load(row.key, row.A ? row.A.days : 30);
+    row.at = Date.now();
+  } catch(e){
+    row.failed = e.message || String(e);   // keep the previous reading on screen
+  } finally {
+    row.busy = false; render();
+  }
+}
+
+const ago = ms => {
+  const n = Math.round((Date.now() - ms)/1000);
+  if (n < 60) return "just now";
+  if (n < 3600) return Math.floor(n/60) + " min ago";
+  return new Date(ms).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});
+};
 
 function render(){
-  const grid = $("#grid");
+  const tabs = $("#tabs"), panel = $("#panel");
   if (!accounts.length){
-    grid.innerHTML = `<div class="empty">Paste a Stripe secret key above and press Add account.</div>`;
+    tabs.hidden = true;
+    panel.innerHTML = `<div class="empty">Paste a Stripe secret key above and press Add account.</div>`;
     return;
   }
-  grid.innerHTML = accounts.map(a => a.error
-    ? `<article class="acct"><div class="acct-head"><div class="acct-name">Could not read account</div></div>
-       <div class="err">${esc(a.error)}</div></article>`
-    : cardHTML(a.data)).join("");
+  tabs.hidden = false;
+  tabs.innerHTML = accounts.map((a,i) => `<button class="tab${a.busy?" busy":""}" role="tab" data-i="${i}"
+    aria-selected="${i===active}">${esc(a.error ? "Unreadable" : a.A.name)}
+    ${a.error ? "" : `<span class="pill ${a.A.mode==="LIVE"?"s-live":"s-test"}">${esc(a.A.mode)}</span>`}
+    ${a.error ? "" : `<span class="r" data-refresh="${i}" title="Refresh this account">${REFRESH_ICON}</span>`}
+    <span class="x" data-close="${i}" title="Remove">×</span></button>`).join("");
+  const cur = accounts[active];
+  if (cur.error){
+    panel.innerHTML = `<section class="mod"><div class="errbox">${esc(cur.error)}</div></section>`;
+    return;
+  }
+  const bar = `<div class="toolbar">
+    <span>${cur.busy ? "Refreshing…" : "Updated " + esc(ago(cur.at))}</span>
+    ${cur.failed ? `<span class="fail">· refresh failed: ${esc(cur.failed)} (showing the last good reading)</span>` : ""}
+    <span class="spacer"></span>
+    <button type="button" data-refresh="${active}" ${cur.busy ? "disabled" : ""}>Refresh this account</button>
+  </div>`;
+  panel.innerHTML = bar + panelFor(cur.A);
 }
+
+document.addEventListener("click", ev => {
+  const r = ev.target.closest("[data-refresh]");
+  if (r){ ev.stopPropagation(); refreshAccount(Number(r.dataset.refresh)); }
+});
+
+$("#tabs").addEventListener("click", ev => {
+  if (ev.target.closest("[data-refresh]")) return;
+  const close = ev.target.closest("[data-close]");
+  if (close){
+    ev.stopPropagation();
+    accounts.splice(Number(close.dataset.close), 1);
+    if (active >= accounts.length) active = Math.max(0, accounts.length - 1);
+    render(); return;
+  }
+  const t = ev.target.closest(".tab");
+  if (t){ active = Number(t.dataset.i); render(); }
+});
 
 $("#form").addEventListener("submit", async ev => {
   ev.preventDefault();
@@ -405,25 +789,25 @@ $("#form").addEventListener("submit", async ev => {
   if (!key) return;
   const days = Number($("#days").value);
   const btn = $("#add");
-  btn.disabled = true; btn.textContent = "Checking…";
+  btn.disabled = true; btn.textContent = "Reading…";
   try {
-    const data = await loadAccount(key, days);
-    accounts.push({data});
-    $("#key").value = "";
+    const A = await load(key, days);
+    accounts.push({key, A, at: Date.now()});
   } catch(e){
     accounts.push({error: e.message || String(e)});
   } finally {
+    active = accounts.length - 1;
     btn.disabled = false; btn.textContent = "Add account";
+    $("#key").value = "";
     render();
     $("#key").focus();
   }
 });
 
 $("#reset").addEventListener("click", () => {
-  accounts.length = 0;
+  accounts.length = 0; active = 0;
   $("#key").value = "";
-  render();
-  $("#key").focus();
+  render(); $("#key").focus();
 });
 
 render();
