@@ -50,7 +50,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 .wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:24px 72px}
 
 h1{font-family:var(--display);font-size:clamp(23px,3.2vw,31px);font-weight:700;
-  letter-spacing:-.025em;margin:0;text-wrap:balance}
+  letter-spacing:-.025em;margin:0 0 16px;text-wrap:balance}
 .lede{color:var(--ink-dim);font-size:13.5px;margin:7px 0 20px;max-width:70ch}
 
 /* key bar */
@@ -93,7 +93,9 @@ button:disabled{opacity:.5;cursor:default}
 .toolbar button{padding:7px 13px;font-size:12.5px}
 .toolbar .fail{color:var(--bad)}
 .toolbar .keyfp{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--surface);
-  border:1px solid var(--line);border-radius:6px;padding:3px 9px;letter-spacing:.01em}
+  border:1px solid var(--line);border-radius:6px;padding:3px 9px;letter-spacing:.01em;word-break:break-all}
+.toolbar .mini{padding:4px 9px;font-size:11.5px}
+.toolbar .mini.done{color:var(--ok);border-color:var(--ok)}
 
 /* triage */
 .triage{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
@@ -187,10 +189,6 @@ dl.kv dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 <body>
 <div class="wrap">
   <h1>Stripe Operations</h1>
-  <p class="lede">Everything a read-only key can tell you about an account: money, risk,
-     customers and timing. Keys go straight from this browser to Stripe — no server in between.
-     A key stays in this page's memory so you can refresh an account, and is gone the
-     moment you close the tab or press Clear all. Nothing is ever written to disk.</p>
 
   <form class="keybar" id="form" autocomplete="off">
     <input id="key" type="password" required autocomplete="off" autocorrect="off"
@@ -204,10 +202,6 @@ dl.kv dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
     <button id="add" class="primary" type="submit">Add account</button>
     <button id="reset" type="button">Clear all</button>
   </form>
-  <p class="hint">Use <strong>restricted keys</strong> (<code>rk_live_…</code>). This page only reads.
-     Each section needs its own read permission on the key — anything not granted is shown as
-     locked rather than failing the page. Grant: Balance, Charges, Payouts, Account, Disputes,
-     Refunds, Customers, Checkout Sessions, Subscriptions, Invoices, Events and Radar.</p>
 
   <div id="tabs" class="tabs" role="tablist" hidden></div>
   <div id="panel"></div>
@@ -280,6 +274,12 @@ async function load(key, days){
   return derive(key, days, D, ERR);
 }
 
+// "rk_live_" + the 10 characters after it + "…" + the last 10. Short keys are shown whole.
+function fingerprint(key){
+  const m = /^([rs]k_(?:live|test)_)(.*)$/.exec(key);
+  const pre = m ? m[1] : "", rest = m ? m[2] : key;
+  return rest.length > 24 ? pre + rest.slice(0,10) + "…" + rest.slice(-10) : key;
+}
 function derive(key, days, D, ERR){
   const a = D.account, S = a.settings || {};
   const list = k => (D[k] && D[k].data) || [];
@@ -403,7 +403,7 @@ function derive(key, days, D, ERR){
 
   return {
     key: key.slice(0,11) + "…", days,
-    fp: key.length > 24 ? key.slice(0,10) + "…" + key.slice(-10) : key,
+    fp: fingerprint(key),
     mode: /_live_/.test(key) ? "LIVE" : /_test_/.test(key) ? "TEST" : "UNKNOWN",
     restricted: /^rk_/.test(key),
     err: ERR,
@@ -483,34 +483,10 @@ function triage(A){
   const out = [];
   const add = (k, what, detail) => out.push(`<div class="alert a-${k}"><span class="what">${what}</span>
     <span class="detail">${detail}</span></div>`);
-
+  // Only account restrictions are surfaced here, by the owner's choice (2026-10-27).
   if (A.disabledReason) add("bad","Account restricted", esc(lbl(A.disabledReason)));
   if (A.chargesEnabled === false) add("bad","Charges disabled","This account cannot take payments.");
-  const due = A.disputes.filter(d => d.due && d.submitted === 0);
-  if (due.length){
-    const soonest = Math.min(...due.map(d => d.due));
-    const n = daysUntil(soonest);
-    add("bad", `${due.length} dispute${due.length>1?"s":""} awaiting evidence`,
-      `${esc(money(A.openDisputeAmt, A.disputes[0].currency))} at risk · earliest deadline ${esc(d8(soonest))}${
-        n <= 3 ? ` — ${n <= 0 ? "overdue" : n + " day" + (n===1?"":"s") + " left"}` : ""}. Unanswered disputes are lost by default.`);
-  }
-  const act = A.efw.filter(w => w.actionable);
-  if (act.length) add("bad", `${act.length} early fraud warning${act.length>1?"s":""}`,
-    "The bank flagged these before a dispute. Refunding now avoids the dispute fee.");
-  if (A.pastDue && A.pastDue.length) add("bad","Information past due", esc(A.pastDue.map(lbl).join(", ")));
-  if (A.deadline) add("warn","Stripe deadline", `${esc(d8(A.deadline))} — ${esc((A.currentlyDue||[]).map(lbl).join(", ") || "documents required")}`);
-  else if (A.currentlyDue && A.currentlyDue.length) add("warn","Stripe needs", esc(A.currentlyDue.map(lbl).join(", ")));
   if (A.payoutsEnabled === false) add("warn","Payouts disabled","Money builds up but will not reach the bank.");
-  else if (A.schedule === "manual") add("warn","Payouts are manual","Cleared money sits in Available until you send a payout yourself.");
-  if (A.chase.length){
-    const top = A.chase[0];
-    add("warn", `${A.chase.length} customer${A.chase.length>1?"s":""} failed and never came back`,
-      `Largest ${esc(money(top.amount, top.currency))} from ${esc(top.email)} — recoverable with a payment link.`);
-  }
-  if (A.converted) add("info","Currency conversion",
-    `${A.converted} payment${A.converted>1?"s":""} were converted into ${esc(A.currency)}. Stripe charges an FX fee on each.`);
-  if (!A.restricted && A.mode === "LIVE") add("info","Full secret key",
-    "A restricted read-only key would be safer for this page.");
   return out.length ? `<div class="triage">${out.join("")}</div>` : "";
 }
 
@@ -760,8 +736,11 @@ function render(){
     return;
   }
   const bar = `<div class="toolbar">
-    <span class="keyfp" title="The key this tab is using: first 10 and last 10 characters">${esc(cur.A.fp)}</span>
+    <span class="keyfp" title="The key this tab is using">${esc(cur.reveal ? cur.key : cur.A.fp)}</span>
+    <button type="button" class="mini" data-reveal="${active}" title="${cur.reveal ? "Hide the full key" : "Show the full key"}">${cur.reveal ? "Hide" : "Show"}</button>
+    <button type="button" class="mini${cur.copied ? " done" : ""}" data-copy="${active}" title="Copy the full key to the clipboard">${cur.copied ? "Copied ✓" : "Copy key"}</button>
     <span>${cur.busy ? "Refreshing…" : "Updated " + esc(ago(cur.at))}</span>
+    ${cur.copyErr ? `<span class="fail">${esc(cur.copyErr)}</span>` : ""}
     ${cur.failed ? `<span class="fail">· refresh failed: ${esc(cur.failed)} (showing the last good reading)</span>` : ""}
     <span class="spacer"></span>
     <button type="button" data-refresh="${active}" ${cur.busy ? "disabled" : ""}>Refresh this account</button>
@@ -771,8 +750,38 @@ function render(){
 
 document.addEventListener("click", ev => {
   const r = ev.target.closest("[data-refresh]");
-  if (r){ ev.stopPropagation(); refreshAccount(Number(r.dataset.refresh)); }
+  if (r){ ev.stopPropagation(); refreshAccount(Number(r.dataset.refresh)); return; }
+  const v = ev.target.closest("[data-reveal]");
+  if (v){ const row = accounts[Number(v.dataset.reveal)]; if (row){ row.reveal = !row.reveal; render(); } return; }
+  const c = ev.target.closest("[data-copy]");
+  if (c){ copyKey(Number(c.dataset.copy)); }
 });
+
+// Copies the full key to the clipboard and flips the button to "Copied" for a moment.
+// If the browser blocks the clipboard, the key is revealed so it can be selected by hand.
+async function copyKey(i){
+  const row = accounts[i];
+  if (!row || !row.key) return;
+  let ok = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(row.key); ok = true; }
+  } catch(e){ ok = false; }
+  if (!ok){
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = row.key; ta.setAttribute("readonly",""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy") === true; ta.remove();
+    } catch(e){ ok = false; }
+  }
+  clearTimeout(row.copiedTimer);
+  if (ok){
+    row.copied = true; row.copyErr = null; render();
+    row.copiedTimer = setTimeout(() => { row.copied = false; render(); }, 1600);
+  } else {
+    row.reveal = true; row.copyErr = "Clipboard blocked by the browser — the key is shown, select it to copy."; render();
+    row.copiedTimer = setTimeout(() => { row.copyErr = null; render(); }, 4000);
+  }
+}
 
 $("#tabs").addEventListener("click", ev => {
   if (ev.target.closest("[data-refresh]")) return;
