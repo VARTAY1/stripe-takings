@@ -515,8 +515,9 @@ function kpis(A){
 }
 
 function panelFor(A){
-  // Modules are grouped under five headings. A module with nothing to show is not
-  // drawn as an empty card; its title is listed in a one-line note under its group.
+  // Account and Recent payments are pinned to the top row. Everything else sits under
+  // titled groups; a module with nothing to show is not drawn as an empty card, its
+  // title is listed in a one-line note under its group.
   const G = {money:[], payments:[], risk:[], customers:[], account:[]};
   const put = (g, title, meta, body, o = {}) =>
     G[g].push({title, empty: !!o.empty, html: mod(title, meta, body, o.wide ? "wide" : null)});
@@ -568,7 +569,7 @@ function panelFor(A){
   </div></div>`, {empty: !lk && !A.refunds.length}); }
 
   /* ================= PAYMENTS ================= */
-  put("payments", "Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
+  const recentMod = mod("Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
     `<div class="body flush"><div class="scroll"><table>
     <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th>Customer</th></tr></thead><tbody>
       ${A.recent.length ? A.recent.map(c => `<tr><td class="muted">${esc(dt(c.created))}</td>
@@ -576,7 +577,7 @@ function panelFor(A){
         <td class="num">${esc(money(c.amount,c.currency))}</td>
         <td class="trunc">${esc(c.who)}${c.brand?`<div class="muted" style="font-size:11px">${esc(c.brand)}</div>`:""}</td></tr>`).join("")
         : `<tr><td colspan="4" class="muted">No payments in this window.</td></tr>`}
-    </tbody></table></div></div>`, {wide: true});
+    </tbody></table></div></div>`);
 
   put("payments", "Why payments failed", A.counts.failed+" in "+A.days+"d", A.declines.length ? `<div class="body">
     <table><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">Value</th></tr></thead><tbody>
@@ -667,7 +668,7 @@ function panelFor(A){
   </div>`, {empty: !A.hours.some(n => n > 0)});
 
   /* ================= ACCOUNT ================= */
-  put("account", "Account", null, `<div class="body"><dl class="kv">
+  const accountMod = mod("Account", null, `<div class="body"><dl class="kv">
     <dt>Opened</dt><dd>${esc(d8(A.created))}${A.created ? ` <span class="muted">· ${
       Math.floor((Date.now()/1000 - A.created)/86400)} days ago</span>` : ""}</dd>
     <dt>Account ID</dt><dd class="mono">${esc(A.id)}</dd>
@@ -689,7 +690,7 @@ function panelFor(A){
     </tbody></table></div></div>`, {empty: !lk && !A.events.length}); }
 
   /* ---- render the groups ---- */
-  const LABEL = {money:"Money", payments:"Payments", risk:"Risk", customers:"Customers", account:"Account"};
+  const LABEL = {money:"Money", payments:"Payments", risk:"Risk", customers:"Customers", account:"Activity"};
   const sections = Object.keys(G).map(g => {
     const live = G[g].filter(m => !m.empty), quiet = G[g].filter(m => m.empty);
     if (!live.length && !quiet.length) return "";
@@ -699,7 +700,7 @@ function panelFor(A){
     </section>`;
   }).join("");
 
-  return triage(A) + kpis(A) + sections;
+  return triage(A) + kpis(A) + `<div class="topgrid">${accountMod}${recentMod}</div>` + sections;
 }
 
 /* ---------- state ---------- */
