@@ -92,6 +92,8 @@ button:disabled{opacity:.5;cursor:default}
 .toolbar .spacer{flex:1}
 .toolbar button{padding:7px 13px;font-size:12.5px}
 .toolbar .fail{color:var(--bad)}
+.toolbar .keyfp{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:6px;padding:3px 9px;letter-spacing:.01em}
 
 /* triage */
 .triage{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
@@ -401,6 +403,7 @@ function derive(key, days, D, ERR){
 
   return {
     key: key.slice(0,11) + "…", days,
+    fp: key.length > 24 ? key.slice(0,10) + "…" + key.slice(-10) : key,
     mode: /_live_/.test(key) ? "LIVE" : /_test_/.test(key) ? "TEST" : "UNKNOWN",
     restricted: /^rk_/.test(key),
     err: ERR,
@@ -757,6 +760,7 @@ function render(){
     return;
   }
   const bar = `<div class="toolbar">
+    <span class="keyfp" title="The key this tab is using: first 10 and last 10 characters">${esc(cur.A.fp)}</span>
     <span>${cur.busy ? "Refreshing…" : "Updated " + esc(ago(cur.at))}</span>
     ${cur.failed ? `<span class="fail">· refresh failed: ${esc(cur.failed)} (showing the last good reading)</span>` : ""}
     <span class="spacer"></span>
