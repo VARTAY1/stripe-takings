@@ -127,6 +127,12 @@ button:disabled{opacity:.5;cursor:default}
 @media (max-width:780px){ .topgrid{grid-template-columns:1fr} }
 .mod{background:var(--surface);border:1px solid var(--line);border-radius:13px;min-width:0;overflow:hidden}
 .mod.wide{grid-column:1/-1}
+.group{margin-top:22px}
+.grp{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--ink-faint);font-weight:700;
+  margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.grp::after{content:"";flex:1;height:1px;background:var(--line)}
+.quiet{font-size:12.5px;color:var(--ink-faint);margin:10px 0 0;padding:9px 14px;border:1px dashed var(--line-2);border-radius:10px}
+.quiet b{color:var(--ink-dim);font-weight:600}
 .mod header{display:flex;align-items:baseline;gap:9px;padding:13px 16px 11px;border-bottom:1px solid var(--line);
   background:var(--surface-2);flex-wrap:wrap}
 .mod h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);
@@ -509,10 +515,14 @@ function kpis(A){
 }
 
 function panelFor(A){
-  const M = [];
+  // Modules are grouped under five headings. A module with nothing to show is not
+  // drawn as an empty card; its title is listed in a one-line note under its group.
+  const G = {money:[], payments:[], risk:[], customers:[], account:[]};
+  const put = (g, title, meta, body, o = {}) =>
+    G[g].push({title, empty: !!o.empty, html: mod(title, meta, body, o.wide ? "wide" : null)});
 
-  /* clearing */
-  M.push(mod("When money becomes available", null, `<div class="body">
+  /* ================= MONEY ================= */
+  put("money", "When money becomes available", null, `<div class="body">
     <p class="note">${A.observedDays != null
       ? `A payment taken today should clear in about <strong>${A.observedDays} day${A.observedDays===1?"":"s"}</strong>, measured from the most recent one.`
       : `Configured delay: <strong>${A.delayDays != null ? A.delayDays+" days" : "not set"}</strong>.`}
@@ -525,11 +535,20 @@ function panelFor(A){
         <td class="num muted">${c.count}</td>
         <td class="num">${esc(money(c.net,c.currency))}</td></tr>`;}).join("")}
     </tbody></table></div>` : `<p class="muted" style="margin-top:8px;font-size:12.5px">Nothing pending.</p>`}
-  </div>`));
+  </div>`);
 
-  /* fees & FX */
-  M.push(mod("Fees and conversion", "last 100 transactions",
-    locked(A,"btx","balance transactions") || `<div class="body">
+  { const lk = locked(A,"payouts","payouts");
+    put("money", "Payouts to bank", A.payouts.length ? A.payouts.length+" recent" : null, lk || `<div class="body flush"><div class="scroll">
+    ${A.payouts.length ? `<table><thead><tr><th>Arrives</th><th class="num">Amount</th><th>State</th></tr></thead><tbody>
+      ${A.payouts.map(p => `<tr><td class="muted">${esc(d8(p.arrival))}</td>
+        <td class="num">${esc(money(p.amount,p.currency))}</td>
+        <td><span class="pill ${p.status==="paid"?"s-ok":p.status==="failed"?"s-bad":"s-warn"}">${esc(lbl(p.status))}</span>
+        ${p.failure?`<div class="muted" style="font-size:11px">${esc(p.failure)}</div>`:""}</td></tr>`).join("")}
+    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No payouts yet.</p>`}
+  </div></div>`, {empty: !lk && !A.payouts.length}); }
+
+  { const lk = locked(A,"btx","balance transactions");
+    put("money", "Fees and conversion", "last 100 transactions", lk || `<div class="body">
     ${A.fees.length ? `<div class="xscroll"><table><thead><tr><th>Cur</th><th class="num">Gross</th><th class="num">Stripe fee</th><th class="num">You keep</th></tr></thead><tbody>
       ${A.fees.map(f => `<tr><td>${esc(f.currency)}</td><td class="num">${esc(money(f.gross,f.currency))}</td>
         <td class="num">${esc(money(f.fee,f.currency))}<div class="muted" style="font-size:11px">${pct(f.fee,f.gross)}%</div></td>
@@ -538,100 +557,18 @@ function panelFor(A){
     ${A.converted ? `<p class="note" style="margin-top:11px">${A.converted} payment${A.converted>1?"s":""} were
       converted into ${esc(A.currency)} before settling. Stripe takes an FX fee on each — taking payment in a
       ${esc(A.currency)} account, or holding a balance in the charge currency, avoids it.</p>` : ""}
-  </div>`));
+  </div>`, {empty: !lk && !A.fees.length && !A.converted}); }
 
-  /* disputes */
-  M.push(mod("Disputes", A.disputes.length ? money(A.openDisputeAmt, A.disputes[0].currency)+" at risk" : "none open",
-    locked(A,"disputes","disputes") || (A.disputes.length ? `<div class="body flush"><div class="scroll">
-    <table><thead><tr><th>Opened</th><th class="num">Amount</th><th>Reason</th><th>Evidence due</th></tr></thead><tbody>
-      ${A.disputes.map(d => {const n = d.due ? daysUntil(d.due) : null;
-        return `<tr><td class="muted">${esc(d8(d.created))}</td>
-        <td class="num">${esc(money(d.amount,d.currency))}</td>
-        <td>${esc(lbl(d.reason))}<div class="muted mono">${esc(lbl(d.status))}</div></td>
-        <td>${d.due ? `${esc(d8(d.due))}<div class="${n<=3?"":"muted"}" style="font-size:11.5px">${
-          d.submitted ? "evidence sent" : n <= 0 ? "overdue" : n+" day"+(n===1?"":"s")+" left"}</div>` : "—"}</td></tr>`;}).join("")}
-    </tbody></table></div></div>` : `<div class="body"><p class="muted">No open disputes.</p></div>`)));
+  { const lk = locked(A,"refunds","refunds");
+    put("money", "Refunds", A.refunds.length ? A.refunds.length+" recent" : null, lk || `<div class="body flush"><div class="scroll">
+    ${A.refunds.length ? `<table><thead><tr><th>When</th><th class="num">Amount</th><th>Reason</th></tr></thead><tbody>
+      ${A.refunds.map(r => `<tr><td class="muted">${esc(d8(r.created))}</td>
+        <td class="num">${esc(money(r.amount,r.currency))}</td><td>${esc(lbl(r.reason||"—"))}</td></tr>`).join("")}
+    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No refunds.</p>`}
+  </div></div>`, {empty: !lk && !A.refunds.length}); }
 
-  /* fraud warnings */
-  M.push(mod("Early fraud warnings", null,
-    locked(A,"efw","Radar fraud warnings") || (A.efw.length ? `<div class="body flush"><div class="scroll">
-    <table><thead><tr><th>Flagged</th><th>Reason</th><th>Action</th></tr></thead><tbody>
-      ${A.efw.map(w => `<tr><td class="muted">${esc(d8(w.created))}</td><td>${esc(lbl(w.reason))}</td>
-        <td>${w.actionable ? `<span class="pill s-bad">refund to avoid dispute</span>` : `<span class="pill s-info">no action</span>`}</td></tr>`).join("")}
-    </tbody></table></div></div>` : `<div class="body"><p class="muted">None. The bank has not flagged any payment as fraudulent.</p></div>`)));
-
-  /* recoverable */
-  M.push(mod("Worth chasing", A.chase.length ? A.chase.length+" customers" : null, `<div class="body">
-    ${A.chase.length ? `<p class="note">Cards declined and the customer never completed a payment. Send a payment link.</p>
-    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Customer</th><th class="num">Tries</th><th class="num">Amount</th></tr></thead><tbody>
-      ${A.chase.map(c => `<tr><td class="trunc">${esc(c.email)}
-        <div class="muted trunc" style="font-size:11px">${esc(c.why||"—")}</div></td>
-        <td class="num">${c.tries}</td>
-        <td class="num">${esc(money(c.amount,c.currency))}</td></tr>`).join("")}
-    </tbody></table></div>` : `<p class="muted">Nobody failed to pay without later succeeding.</p>`}
-  </div>`));
-
-  /* decline reasons */
-  if (A.declines.length) M.push(mod("Why payments failed", A.counts.failed+" in "+A.days+"d", `<div class="body">
-    <table><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">Value</th></tr></thead><tbody>
-      ${A.declines.map(d => `<tr><td>${esc(lbl(d.code))}<div class="muted" style="font-size:11.5px">${esc(d.message||"")}</div></td>
-        <td class="num">${d.count}</td><td class="num">${esc(money(d.amount,d.currency))}</td></tr>`).join("")}
-    </tbody></table></div>`));
-
-  /* sales pattern */
-  const maxH = Math.max(1, ...A.hours);
-  M.push(mod("When people buy", "local time", `<div class="body">
-    <div class="hours">${A.hours.map((n,h) => `<div class="h" title="${h}:00 — ${n} payment${n===1?"":"s"}">
-      <i style="height:${Math.round(n/maxH*100)}%"></i></div>`).join("")}</div>
-    <div class="hourlbl"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-  </div>`));
-
-  /* card mix */
-  const totalBrand = A.brands.reduce((n,b) => n+b.v, 0);
-  M.push(mod("How they pay", null, `<div class="body"><div class="share">
-    ${A.brands.length ? A.brands.slice(0,6).map(b => `<div class="row">
-      <span>${esc(lbl(b.k))}</span><span class="num muted">${b.v} · ${pct(b.v,totalBrand)}%</span>
-      <span class="bar"><i style="width:${pct(b.v,totalBrand)}%"></i></span></div>`).join("")
-      : `<p class="muted">No card data.</p>`}
-  </div>
-  ${A.countries.length ? `<p class="note" style="margin-top:13px">Cards issued in ${
-    A.countries.slice(0,4).map(c => esc(c.k)+" "+pct(c.v,totalBrand)+"%").join(", ")}.</p>` : ""}
-  </div>`));
-
-  /* customers */
-  M.push(mod("Customers", null, locked(A,"customers","customers") || `<div class="body">
-    <dl class="kv">
-      <dt>On file</dt><dd>${A.customersTotal}${A.customersMore ? "+" : ""}</dd>
-      <dt>Added in ${A.days}d</dt><dd>${A.newCustomers}</dd>
-      <dt>Buyers in ${A.days}d</dt><dd>${A.buyers}</dd>
-      <dt>Bought more than once</dt><dd>${A.repeat}${A.buyers ? ` · ${pct(A.repeat,A.buyers)}%` : ""}</dd>
-    </dl></div>`));
-
-  /* subscriptions */
-  if (!A.err.subs && (A.subs || A.mrr.length)) M.push(mod("Subscriptions", A.subs+" active", `<div class="body">
-    <dl class="kv"><dt>Active</dt><dd>${A.subs}</dd>
-    <dt>Monthly recurring</dt><dd>${A.mrr.length ? A.mrr.map(m => esc(money(m.amount,m.currency))).join(" · ") : "—"}</dd></dl>
-  </div>`));
-
-  /* unpaid invoices */
-  if (!A.err.invoices && A.unpaid.length) M.push(mod("Unpaid invoices",
-    money(A.unpaidTotal, A.unpaidCur), `<div class="body flush"><div class="scroll">
-    <table><thead><tr><th>Invoice</th><th class="num">Due</th><th class="num">Amount</th></tr></thead><tbody>
-      ${A.unpaid.map(i => `<tr><td>${esc(i.number||"—")}<div class="muted trunc">${esc(i.email||"")}</div></td>
-        <td class="num muted">${i.due ? esc(d8(i.due)) : "—"}</td>
-        <td class="num">${esc(money(i.amount,i.currency))}</td></tr>`).join("")}
-    </tbody></table></div></div>`));
-
-  /* abandoned checkouts */
-  if (!A.err.sessions) M.push(mod("Abandoned checkouts", null, `<div class="body">
-    ${A.sessions ? `<dl class="kv"><dt>Open, unpaid</dt><dd>${A.sessions}</dd>
-      <dt>Value left behind</dt><dd>${esc(money(A.sessionsValue, A.sessionsCur))}</dd></dl>
-      <p class="note" style="margin-top:11px">Checkout sessions started but never paid.</p>`
-      : `<p class="muted">No open checkout sessions.</p>`}
-  </div>`));
-
-  /* recent payments — pinned to the top row */
-  const recentMod = mod("Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
+  /* ================= PAYMENTS ================= */
+  put("payments", "Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
     `<div class="body flush"><div class="scroll"><table>
     <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th>Customer</th></tr></thead><tbody>
       ${A.recent.length ? A.recent.map(c => `<tr><td class="muted">${esc(dt(c.created))}</td>
@@ -639,27 +576,98 @@ function panelFor(A){
         <td class="num">${esc(money(c.amount,c.currency))}</td>
         <td class="trunc">${esc(c.who)}${c.brand?`<div class="muted" style="font-size:11px">${esc(c.brand)}</div>`:""}</td></tr>`).join("")
         : `<tr><td colspan="4" class="muted">No payments in this window.</td></tr>`}
-    </tbody></table></div></div>`);
+    </tbody></table></div></div>`, {wide: true});
 
-  /* payouts + refunds side by side */
-  M.push(mod("Payouts to bank", null, locked(A,"payouts","payouts") || `<div class="body flush"><div class="scroll">
-    ${A.payouts.length ? `<table><thead><tr><th>Arrives</th><th class="num">Amount</th><th>State</th></tr></thead><tbody>
-      ${A.payouts.map(p => `<tr><td class="muted">${esc(d8(p.arrival))}</td>
-        <td class="num">${esc(money(p.amount,p.currency))}</td>
-        <td><span class="pill ${p.status==="paid"?"s-ok":p.status==="failed"?"s-bad":"s-warn"}">${esc(lbl(p.status))}</span>
-        ${p.failure?`<div class="muted" style="font-size:11px">${esc(p.failure)}</div>`:""}</td></tr>`).join("")}
-    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No payouts yet.</p>`}
-  </div></div>`));
+  put("payments", "Why payments failed", A.counts.failed+" in "+A.days+"d", A.declines.length ? `<div class="body">
+    <table><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">Value</th></tr></thead><tbody>
+      ${A.declines.map(d => `<tr><td>${esc(lbl(d.code))}<div class="muted" style="font-size:11.5px">${esc(d.message||"")}</div></td>
+        <td class="num">${d.count}</td><td class="num">${esc(money(d.amount,d.currency))}</td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="body"><p class="muted">No failed payments.</p></div>`, {empty: !A.declines.length});
 
-  M.push(mod("Refunds", null, locked(A,"refunds","refunds") || `<div class="body flush"><div class="scroll">
-    ${A.refunds.length ? `<table><thead><tr><th>When</th><th class="num">Amount</th><th>Reason</th></tr></thead><tbody>
-      ${A.refunds.map(r => `<tr><td class="muted">${esc(d8(r.created))}</td>
-        <td class="num">${esc(money(r.amount,r.currency))}</td><td>${esc(lbl(r.reason||"—"))}</td></tr>`).join("")}
-    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No refunds.</p>`}
-  </div></div>`));
+  put("payments", "Worth chasing", A.chase.length ? A.chase.length+" customers" : null, `<div class="body">
+    ${A.chase.length ? `<p class="note">Cards declined and the customer never completed a payment. Send a payment link.</p>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Customer</th><th class="num">Tries</th><th class="num">Amount</th></tr></thead><tbody>
+      ${A.chase.map(c => `<tr><td class="trunc">${esc(c.email)}
+        <div class="muted trunc" style="font-size:11px">${esc(c.why||"—")}</div></td>
+        <td class="num">${c.tries}</td>
+        <td class="num">${esc(money(c.amount,c.currency))}</td></tr>`).join("")}
+    </tbody></table></div>` : `<p class="muted">Nobody failed to pay without later succeeding.</p>`}
+  </div>`, {empty: !A.chase.length});
 
-  /* account details — pinned to the top row */
-  const accountMod = mod("Account", null, `<div class="body"><dl class="kv">
+  { const lk = locked(A,"sessions","checkout sessions");
+    put("payments", "Abandoned checkouts", A.sessions ? A.sessions+" open" : null, lk || `<div class="body">
+    ${A.sessions ? `<dl class="kv"><dt>Open, unpaid</dt><dd>${A.sessions}</dd>
+      <dt>Value left behind</dt><dd>${esc(money(A.sessionsValue, A.sessionsCur))}</dd></dl>
+      <p class="note" style="margin-top:11px">Checkout sessions started but never paid.</p>`
+      : `<p class="muted">No open checkout sessions.</p>`}
+  </div>`, {empty: !lk && !A.sessions}); }
+
+  { const lk = locked(A,"invoices","invoices");
+    put("payments", "Unpaid invoices", A.unpaid.length ? money(A.unpaidTotal, A.unpaidCur) : null, lk || `<div class="body flush"><div class="scroll">
+    ${A.unpaid.length ? `<table><thead><tr><th>Invoice</th><th class="num">Due</th><th class="num">Amount</th></tr></thead><tbody>
+      ${A.unpaid.map(i => `<tr><td>${esc(i.number||"—")}<div class="muted trunc">${esc(i.email||"")}</div></td>
+        <td class="num muted">${i.due ? esc(d8(i.due)) : "—"}</td>
+        <td class="num">${esc(money(i.amount,i.currency))}</td></tr>`).join("")}
+    </tbody></table>` : `<p class="muted" style="padding:13px 16px">No unpaid invoices.</p>`}
+  </div></div>`, {empty: !lk && !A.unpaid.length}); }
+
+  { const lk = locked(A,"subs","subscriptions");
+    put("payments", "Subscriptions", A.subs ? A.subs+" active" : null, lk || `<div class="body">
+    <dl class="kv"><dt>Active</dt><dd>${A.subs}</dd>
+    <dt>Monthly recurring</dt><dd>${A.mrr.length ? A.mrr.map(m => esc(money(m.amount,m.currency))).join(" · ") : "—"}</dd></dl>
+  </div>`, {empty: !lk && !A.subs && !A.mrr.length}); }
+
+  /* ================= RISK ================= */
+  { const lk = locked(A,"disputes","disputes");
+    put("risk", "Disputes", A.disputes.length ? money(A.openDisputeAmt, A.disputes[0].currency)+" at risk" : "none open",
+    lk || (A.disputes.length ? `<div class="body flush"><div class="scroll">
+    <table><thead><tr><th>Opened</th><th class="num">Amount</th><th>Reason</th><th>Evidence due</th></tr></thead><tbody>
+      ${A.disputes.map(d => {const n = d.due ? daysUntil(d.due) : null;
+        return `<tr><td class="muted">${esc(d8(d.created))}</td>
+        <td class="num">${esc(money(d.amount,d.currency))}</td>
+        <td>${esc(lbl(d.reason))}<div class="muted mono">${esc(lbl(d.status))}</div></td>
+        <td>${d.due ? `${esc(d8(d.due))}<div class="${n<=3?"":"muted"}" style="font-size:11.5px">${
+          d.submitted ? "evidence sent" : n <= 0 ? "overdue" : n+" day"+(n===1?"":"s")+" left"}</div>` : "—"}</td></tr>`;}).join("")}
+    </tbody></table></div></div>` : `<div class="body"><p class="muted">No open disputes.</p></div>`), {empty: !lk && !A.disputes.length}); }
+
+  { const lk = locked(A,"efw","Radar fraud warnings");
+    put("risk", "Early fraud warnings", A.efw.length ? A.efw.length+" flagged" : null,
+    lk || (A.efw.length ? `<div class="body flush"><div class="scroll">
+    <table><thead><tr><th>Flagged</th><th>Reason</th><th>Action</th></tr></thead><tbody>
+      ${A.efw.map(w => `<tr><td class="muted">${esc(d8(w.created))}</td><td>${esc(lbl(w.reason))}</td>
+        <td>${w.actionable ? `<span class="pill s-bad">refund to avoid dispute</span>` : `<span class="pill s-info">no action</span>`}</td></tr>`).join("")}
+    </tbody></table></div></div>` : `<div class="body"><p class="muted">None. The bank has not flagged any payment as fraudulent.</p></div>`), {empty: !lk && !A.efw.length}); }
+
+  /* ================= CUSTOMERS ================= */
+  { const lk = locked(A,"customers","customers");
+    put("customers", "Customers", null, lk || `<div class="body">
+    <dl class="kv">
+      <dt>On file</dt><dd>${A.customersTotal}${A.customersMore ? "+" : ""}</dd>
+      <dt>Added in ${A.days}d</dt><dd>${A.newCustomers}</dd>
+      <dt>Buyers in ${A.days}d</dt><dd>${A.buyers}</dd>
+      <dt>Bought more than once</dt><dd>${A.repeat}${A.buyers ? ` · ${pct(A.repeat,A.buyers)}%` : ""}</dd>
+    </dl></div>`); }
+
+  const totalBrand = A.brands.reduce((n,b) => n+b.v, 0);
+  put("customers", "How they pay", null, `<div class="body"><div class="share">
+    ${A.brands.length ? A.brands.slice(0,6).map(b => `<div class="row">
+      <span>${esc(lbl(b.k))}</span><span class="num muted">${b.v} · ${pct(b.v,totalBrand)}%</span>
+      <span class="bar"><i style="width:${pct(b.v,totalBrand)}%"></i></span></div>`).join("")
+      : `<p class="muted">No card data.</p>`}
+  </div>
+  ${A.countries.length ? `<p class="note" style="margin-top:13px">Cards issued in ${
+    A.countries.slice(0,4).map(c => esc(c.k)+" "+pct(c.v,totalBrand)+"%").join(", ")}.</p>` : ""}
+  </div>`, {empty: !A.brands.length});
+
+  const maxH = Math.max(1, ...A.hours);
+  put("customers", "When people buy", "local time", `<div class="body">
+    <div class="hours">${A.hours.map((n,h) => `<div class="h" title="${h}:00 — ${n} payment${n===1?"":"s"}">
+      <i style="height:${Math.round(n/maxH*100)}%"></i></div>`).join("")}</div>
+    <div class="hourlbl"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+  </div>`, {empty: !A.hours.some(n => n > 0)});
+
+  /* ================= ACCOUNT ================= */
+  put("account", "Account", null, `<div class="body"><dl class="kv">
     <dt>Opened</dt><dd>${esc(d8(A.created))}${A.created ? ` <span class="muted">· ${
       Math.floor((Date.now()/1000 - A.created)/86400)} days ago</span>` : ""}</dd>
     <dt>Account ID</dt><dd class="mono">${esc(A.id)}</dd>
@@ -674,16 +682,24 @@ function panelFor(A){
       <span class="muted">${esc(lbl(A.schedule))}${A.delayDays!=null?` +${A.delayDays}d`:""}</span></dd>
   </dl></div>`);
 
-  /* activity */
-  if (!A.err.events && A.events.length) M.push(mod("Recent activity", "last 30 days only",
-    `<div class="body flush"><div class="scroll"><table><tbody>
-      ${A.events.map(e => `<tr><td class="muted" style="width:120px">${esc(dt(e.created))}</td>
-        <td class="mono">${esc(e.type)}</td></tr>`).join("")}
-    </tbody></table></div></div>`));
+  { const lk = locked(A,"events","events");
+    put("account", "Recent activity", "last 30 days only", lk || `<div class="body flush"><div class="scroll"><table><tbody>
+      ${A.events.length ? A.events.map(e => `<tr><td class="muted" style="width:120px">${esc(dt(e.created))}</td>
+        <td class="mono">${esc(e.type)}</td></tr>`).join("") : `<tr><td class="muted">No activity.</td></tr>`}
+    </tbody></table></div></div>`, {empty: !lk && !A.events.length}); }
 
-  return triage(A) + kpis(A)
-       + `<div class="topgrid">${accountMod}${recentMod}</div>`
-       + `<div class="grid">${M.join("")}</div>`;
+  /* ---- render the groups ---- */
+  const LABEL = {money:"Money", payments:"Payments", risk:"Risk", customers:"Customers", account:"Account"};
+  const sections = Object.keys(G).map(g => {
+    const live = G[g].filter(m => !m.empty), quiet = G[g].filter(m => m.empty);
+    if (!live.length && !quiet.length) return "";
+    return `<section class="group"><h3 class="grp">${LABEL[g]}</h3>
+      ${live.length ? `<div class="grid">${live.map(m => m.html).join("")}</div>` : ""}
+      ${quiet.length ? `<p class="quiet"><b>Nothing to report</b> · ${quiet.map(m => esc(m.title)).join(" · ")}</p>` : ""}
+    </section>`;
+  }).join("");
+
+  return triage(A) + kpis(A) + sections;
 }
 
 /* ---------- state ---------- */
