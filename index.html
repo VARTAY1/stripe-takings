@@ -151,6 +151,11 @@ th:last-child,td:last-child{padding-right:12px}
 tr:last-child td{border-bottom:0}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .scroll{max-height:320px;overflow:auto}
+.scroll.tall{max-height:460px}
+.tfoot{display:flex;gap:14px;flex-wrap:wrap;padding:9px 12px;font-size:12px;color:var(--ink-dim);border-top:1px solid var(--line)}
+.tfoot b{color:var(--ink)}
+.clr{font-size:11px;color:var(--ink-faint);white-space:nowrap}
+.nw{white-space:nowrap}
 .mod .body table{min-width:0}
 .mod .body > table, .scroll > table{display:table;width:100%}
 .xscroll{overflow-x:auto}
@@ -254,7 +259,7 @@ const CALLS = since => ({
   account:   ["account"],
   balance:   ["balance"],
   btx:       ["balance_transactions", {limit:100}],
-  charges:   ["charges", {limit:100, "created[gte]":since}],
+  charges:   ["charges", {limit:100, "created[gte]":since, "expand[]":"data.balance_transaction"}],
   payouts:   ["payouts", {limit:10}],
   disputes:  ["disputes", {limit:25}],
   efw:       ["radar/early_fraud_warnings", {limit:25}],
@@ -407,6 +412,16 @@ function derive(key, days, D, ERR){
   const ext = (a.external_accounts && a.external_accounts.data) || [];
   const bank = ext.find(e => e.object === "bank_account") || ext[0] || null;
 
+  // settlement totals of succeeded charges in the window, in the currency Stripe settled them in
+  const btOf = c => (c.balance_transaction && typeof c.balance_transaction === "object") ? c.balance_transaction : null;
+  const settleMap = {};
+  for (const c of succ){
+    const bt = btOf(c); if (!bt) continue;
+    const r = settleMap[bt.currency] || (settleMap[bt.currency] = {currency:bt.currency, gross:0, fee:0, net:0, count:0});
+    r.gross += bt.amount||0; r.fee += bt.fee||0; r.net += bt.net||0; r.count++;
+  }
+  const settled = Object.values(settleMap).sort((x,y) => y.net - x.net);
+
   return {
     key: key.slice(0,11) + "…", days,
     fp: fingerprint(key),
@@ -433,7 +448,7 @@ function derive(key, days, D, ERR){
     available: (D.balance && D.balance.available) || [],
     pending: (D.balance && D.balance.pending) || [],
     reserved: (D.balance && D.balance.connect_reserved) || [],
-    byCurrency, fees, converted, convertedTotal, clearing, observedDays,
+    byCurrency, fees, converted, convertedTotal, clearing, observedDays, settled,
     counts: {
       total: charges.length, hasMore: !!(D.charges && D.charges.has_more),
       succeeded: succ.length, failed: failed.length,
@@ -442,7 +457,10 @@ function derive(key, days, D, ERR){
     },
     declines, chase, aov, buyers, repeat,
     brands: share(brandMap), countries: share(countryMap), hours,
-    recent: charges.slice(0,25).map(c => ({
+    recent: charges.slice(0,50).map(c => { const bt = btOf(c); return {
+      // what Stripe actually settled for this payment: fee, net and clearing date, in the settlement currency
+      settle: bt ? {on:bt.available_on, status:bt.status, gross:bt.amount||0, fee:bt.fee||0, net:bt.net||0,
+                    currency:bt.currency, rate:bt.exchange_rate||null} : null,
       created:c.created,
       state: c.disputed ? "disputed"
            : (c.amount_refunded||0) >= (c.amount||0) && (c.amount_refunded||0) > 0 ? "refunded"
@@ -451,7 +469,7 @@ function derive(key, days, D, ERR){
       who:(c.billing_details&&c.billing_details.email)||c.receipt_email||(c.billing_details&&c.billing_details.name)||"—",
       brand:(c.payment_method_details&&c.payment_method_details.card&&c.payment_method_details.card.brand)||"",
       note:c.description||c.failure_message||""
-    })),
+    }; }),
     payouts: list("payouts").map(p => ({arrival:p.arrival_date, amount:p.amount||0, currency:p.currency,
       status:p.status, failure:p.failure_message, method:p.method})),
     disputes: disputes.map(d => ({amount:d.amount, currency:d.currency, reason:d.reason, status:d.status,
@@ -506,7 +524,8 @@ function kpis(A){
   return `<div class="kpis">
     ${k("Available", esc(sumList(A.available)), "ready to pay out")}
     ${k("Pending", esc(sumList(A.pending)), A.observedDays != null ? `clears in ~${A.observedDays}d` : "still settling")}
-    ${k("Net · "+A.days+"d", esc(net), `${A.counts.succeeded} payment${A.counts.succeeded===1?"":"s"}`)}
+    ${k("Net · "+A.days+"d", esc(net), `${A.counts.succeeded} payment${A.counts.succeeded===1?"":"s"}${
+        A.settled && A.settled.length ? " · " + A.settled.map(x => esc(money(x.net,x.currency))).join(" · ") + " after fees" : ""}`)}
     ${k("Stripe fees · "+A.days+"d", esc(feeTotal), feeRate != null ? feeRate+"% of gross" : "—")}
     ${k("Average order", A.aov != null ? esc(money(A.aov, A.byCurrency[0].currency)) : "—",
         A.buyers ? `${A.buyers} buyer${A.buyers===1?"":"s"}, ${A.repeat} repeat` : "—")}
@@ -569,15 +588,31 @@ function panelFor(A){
   </div></div>`, {empty: !lk && !A.refunds.length}); }
 
   /* ================= PAYMENTS ================= */
+  const now = Date.now()/1000;
+  const clears = c => {
+    if (!c.settle || !c.settle.on) return `<span class="muted">—</span>`;
+    const n = Math.ceil((c.settle.on - now)/86400);
+    if (c.settle.status === "available" || n <= 0) return `<span class="pill s-ok">cleared</span><div class="clr">${esc(d8(c.settle.on))}</div>`;
+    return `${esc(d8(c.settle.on))}<div class="clr">${n === 1 ? "tomorrow" : "in " + n + " days"}</div>`;
+  };
   const recentMod = mod("Recent payments", A.counts.hasMore ? "100+ in window" : A.counts.total+" in window",
-    `<div class="body flush"><div class="scroll"><table>
-    <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th>Customer</th></tr></thead><tbody>
-      ${A.recent.length ? A.recent.map(c => `<tr><td class="muted">${esc(dt(c.created))}</td>
+    `<div class="body flush"><div class="scroll tall"><table>
+    <thead><tr><th>When</th><th>State</th><th class="num">Amount</th><th class="num">Stripe fee</th><th class="num">Net to you</th><th>Clears</th><th>Customer</th></tr></thead><tbody>
+      ${A.recent.length ? A.recent.map(c => `<tr><td class="muted nw">${esc(dt(c.created))}</td>
         <td><span class="pill ${c.state==="succeeded"?"s-ok":c.state==="failed"||c.state==="disputed"?"s-bad":"s-warn"}">${esc(c.state)}</span></td>
         <td class="num">${esc(money(c.amount,c.currency))}</td>
+        <td class="num muted">${c.settle ? esc(money(c.settle.fee,c.settle.currency)) : "—"}</td>
+        <td class="num">${c.settle ? `<strong>${esc(money(c.settle.net,c.settle.currency))}</strong>${
+          c.settle.rate ? `<div class="clr" title="Stripe's exchange rate on this payment">${esc(c.currency.toUpperCase())}→${esc(c.settle.currency.toUpperCase())} @ ${Number(c.settle.rate).toFixed(4)}</div>` : ""}` : "—"}</td>
+        <td class="nw">${clears(c)}</td>
         <td class="trunc">${esc(c.who)}${c.brand?`<div class="muted" style="font-size:11px">${esc(c.brand)}</div>`:""}</td></tr>`).join("")
-        : `<tr><td colspan="4" class="muted">No payments in this window.</td></tr>`}
-    </tbody></table></div></div>`);
+        : `<tr><td colspan="7" class="muted">No payments in this window.</td></tr>`}
+    </tbody></table></div>
+    <div class="tfoot">${A.settled && A.settled.length
+      ? `<span>Succeeded in ${A.days}d:</span>` + A.settled.map(x => `<span><b>${esc(money(x.net,x.currency))}</b> net to you ·
+          ${esc(money(x.fee,x.currency))} Stripe fees · ${esc(money(x.gross,x.currency))} gross · ${x.count} payment${x.count===1?"":"s"}</span>`).join("")
+      : `<span class="muted">No settled payments in this window.</span>`}</div>
+  </div>`);
 
   put("payments", "Why payments failed", A.counts.failed+" in "+A.days+"d", A.declines.length ? `<div class="body">
     <table><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">Value</th></tr></thead><tbody>
